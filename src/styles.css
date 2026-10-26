@@ -205,6 +205,16 @@ input[type="search"], input[type="datetime-local"] {
   border-radius: var(--radius);
   background: var(--field);
 }
+select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+.field select + input { margin-top: 6px; }
 input::placeholder { color: var(--muted); opacity: .8; }
 input:disabled, button:disabled { opacity: .55; cursor: not-allowed; }
 .mono-input { font-family: var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }

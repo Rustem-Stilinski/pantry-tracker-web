@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, signal, viewChi
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { CATEGORIES, UNITS, itemKey, toLocalInputValue } from '../core/format';
+import { CATEGORIES, OTHER_UNIT, UNITS, UNIT_GROUPS, itemKey, toLocalInputValue } from '../core/format';
 import { LogStore } from './log.store';
 
 /** The "Log a use" slip. */
@@ -39,10 +39,18 @@ import { LogStore } from './log.store';
           </div>
           <div class="field">
             <label for="unit">Unit</label>
-            <input id="unit" type="text" formControlName="unit" list="units" maxlength="20" autocomplete="off">
-            <datalist id="units">
-              @for (u of units; track u) { <option [value]="u"></option> }
-            </datalist>
+            <select id="unit" formControlName="unit">
+              @for (group of unitGroups; track group.label) {
+                <optgroup [label]="group.label">
+                  @for (u of group.units; track u) { <option [value]="u">{{ u }}</option> }
+                </optgroup>
+              }
+              <option [value]="otherUnit">Other…</option>
+            </select>
+            @if (form.controls.unit.value === otherUnit) {
+              <input id="custom-unit" type="text" formControlName="customUnit" maxlength="20"
+                     autocomplete="off" placeholder="e.g. jar" aria-label="Custom unit">
+            }
           </div>
         </div>
 
@@ -87,7 +95,8 @@ import { LogStore } from './log.store';
 export class LogForm {
   protected readonly store = inject(LogStore);
   protected readonly categories = CATEGORIES;
-  protected readonly units = UNITS;
+  protected readonly unitGroups = UNIT_GROUPS;
+  protected readonly otherUnit = OTHER_UNIT;
   protected readonly today = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date());
   protected readonly message = signal('');
   protected readonly maxWhen = signal(toLocalInputValue(new Date()));
@@ -97,6 +106,7 @@ export class LogForm {
     itemName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     quantity: new FormControl<number | null>(1, { validators: [Validators.required, Validators.min(0.01)] }),
     unit: new FormControl('pcs', { nonNullable: true }),
+    customUnit: new FormControl('', { nonNullable: true }),
     category: new FormControl<string>(CATEGORIES[0], { nonNullable: true }),
     when: new FormControl<'now' | 'earlier'>('now', { nonNullable: true }),
     usedAt: new FormControl('', { nonNullable: true }),
@@ -107,7 +117,7 @@ export class LogForm {
     // Picking an item you've logged before fills in its usual unit and category.
     this.form.controls.itemName.valueChanges.pipe(takeUntilDestroyed()).subscribe((name) => {
       const known = this.store.knownItems().get(itemKey(name ?? ''));
-      if (known) this.form.patchValue({ unit: known.unit, category: known.category }, { emitEvent: false });
+      if (known) this.form.patchValue({ ...unitFields(known.unit), category: known.category }, { emitEvent: false });
     });
     this.form.controls.when.valueChanges.pipe(takeUntilDestroyed()).subscribe((when) => {
       if (when === 'earlier') {
@@ -133,6 +143,8 @@ export class LogForm {
     if (!itemName) return this.fail('Name the item that was used.', 'item');
     const quantity = Number(v.quantity);
     if (!(quantity > 0)) return this.fail('Enter an amount above zero.', 'qty');
+    const unit = v.unit === OTHER_UNIT ? v.customUnit.trim() : v.unit;
+    if (!unit) return this.fail('Type the unit, or pick one from the list.', 'custom-unit');
 
     let usedAt: string | undefined;
     if (v.when === 'earlier') {
@@ -145,13 +157,13 @@ export class LogForm {
     const ok = await this.store.add({
       itemName,
       quantity,
-      unit: v.unit.trim() || 'pcs',
+      unit,
       category: v.category,
       note: v.note.trim() || null,
       usedAt,
     });
     if (ok) {
-      this.form.reset({ itemName: '', quantity: 1, unit: 'pcs', category: v.category, when: 'now', usedAt: '', note: '' });
+      this.form.reset({ itemName: '', quantity: 1, unit: 'pcs', customUnit: '', category: v.category, when: 'now', usedAt: '', note: '' });
       this.itemInput().nativeElement.focus();
     }
   }
@@ -160,4 +172,9 @@ export class LogForm {
     this.message.set(message);
     if (focusId) document.getElementById(focusId)?.focus();
   }
+}
+
+/** A unit from the list selects it; anything else selects "Other…" and fills the text box. */
+function unitFields(unit: string): { unit: string; customUnit: string } {
+  return UNITS.includes(unit) ? { unit, customUnit: '' } : { unit: OTHER_UNIT, customUnit: unit };
 }

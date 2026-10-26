@@ -2,10 +2,17 @@
 
 export const CATEGORIES = ['Kitchen', 'Pantry', 'Bathroom', 'Cleaning', 'Laundry', 'Office', 'Other'] as const;
 
-export const UNITS = [
-  'pcs', 'pack', 'box', 'roll', 'bottle', 'can', 'bag', 'carton', 'tube', 'sheet', 'pod',
-  'lb', 'oz', 'gal', 'fl oz', 'g', 'kg', 'ml', 'L',
+/** Units offered in the dropdown, grouped the way people think about them. */
+export const UNIT_GROUPS: { label: string; units: string[] }[] = [
+  { label: 'Count', units: ['pcs', 'pack', 'box', 'roll', 'bottle', 'can', 'bag', 'carton', 'tube', 'sheet', 'pod'] },
+  { label: 'Weight', units: ['lb', 'oz', 'kg', 'g'] },
+  { label: 'Volume', units: ['gal', 'fl oz', 'L', 'ml'] },
 ];
+
+export const UNITS = UNIT_GROUPS.flatMap((g) => g.units);
+
+/** Value of the dropdown's "Other…" choice, which reveals a text box for any unit. */
+export const OTHER_UNIT = '__other__';
 
 const PLURALS: Record<string, string> = {
   pack: 'packs', box: 'boxes', roll: 'rolls', bottle: 'bottles', can: 'cans', bag: 'bags',
