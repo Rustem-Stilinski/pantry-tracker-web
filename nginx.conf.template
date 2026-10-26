@@ -1,14 +1,19 @@
-# nginx:alpine fills in ${API_URL} from the environment at container start
+# nginx:alpine fills in ${PORT} and ${API_URL} from the environment at container start
 # (only variables that are actually set are replaced, so $host etc. stay as nginx variables).
+#   Docker Compose: API_URL=http://api:8080
+#   Render:         API_URL=https://<api-service>.onrender.com  (PORT is set by Render)
 server {
-    listen 80;
+    listen ${PORT};
     server_name _;
     root /usr/share/nginx/html;
 
     # API and live updates go to Spring Boot, on the same origin as the app (so cookies and CSRF just work).
     location /api/ {
         proxy_pass ${API_URL};
-        proxy_set_header Host $host;
+        # The API's own host name, so hosting platforms route the request to it (and TLS SNI matches).
+        proxy_set_header Host $proxy_host;
+        proxy_ssl_server_name on;
+        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
