@@ -16,7 +16,7 @@ import { Session } from '../core/session.service';
     <div class="app narrow">
       <header class="top">
         <div class="brand">
-          <h1>Used Items Log</h1>
+          <h1>Pantry Tracker</h1>
           <p class="sub">A log is shared by everyone who joins it: a home, an office, a team.</p>
         </div>
         @if (session.activeHouseholdId()) { <a routerLink="/" class="link-btn">Back to your log</a> }
