@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 
 import { Session } from '../core/session.service';
 import { Toasts } from '../core/toast.service';
+import { SiteHeader } from '../shared/site-header.component';
 import { EntryList } from './entry-list.component';
 import { LogForm } from './log-form.component';
 import { LogStore } from './log.store';
@@ -13,19 +14,10 @@ import { TotalsTable } from './totals-table.component';
   selector: 'app-log-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [LogStore],
-  imports: [RouterLink, LogForm, QuickRepeats, TotalsTable, EntryList],
+  imports: [RouterLink, SiteHeader, LogForm, QuickRepeats, TotalsTable, EntryList],
   template: `
     <div class="app">
-      <header class="top">
-        <div class="brand">
-          <h1>Used Items Log</h1>
-          <p class="sub">Write down what gets used up and how much, so everyone can see what to restock.</p>
-        </div>
-        <div class="account">
-          <span class="who-me">{{ session.user()?.displayName }}</span>
-          <button type="button" class="link-btn" (click)="signOut()">Sign out</button>
-        </div>
-      </header>
+      <app-site-header subtitle="Write down what gets used up and how much, so everyone can see what to restock." />
 
       <div class="household-bar">
         <div class="household-name">
@@ -76,7 +68,6 @@ export class LogPage {
   protected readonly session = inject(Session);
   protected readonly store = inject(LogStore);
   private readonly toasts = inject(Toasts);
-  private readonly router = inject(Router);
   protected readonly copied = signal(false);
 
   /** "K7QM3XRP" shown as "K7QM-3XRP" so it's easy to read out loud. */
@@ -119,8 +110,4 @@ export class LogPage {
     }
   }
 
-  protected async signOut(): Promise<void> {
-    await this.session.signOut();
-    await this.router.navigateByUrl('/sign-in');
-  }
 }

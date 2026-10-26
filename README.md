@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/Rustem-Stilinski/pantry-tracker-web/actions/workflows/ci.yml/badge.svg)](https://github.com/Rustem-Stilinski/pantry-tracker-web/actions/workflows/ci.yml)
 
-Web app for **Used Items Log**: a shared log of things that get used up (paper towels, coffee pods,
-printer paper), with monthly totals so you know what to restock. Several people share one log by
-joining it with an invite code.
+Web app for **Pantry Tracker**: a shared log of things that get used up (paper towels, coffee pods,
+printer paper) and of what they cost. **Used items** logs what runs out; **Prices** reads receipt
+photos and shows price history, price changes, the cheapest store for each item, and monthly spending.
+Several people share one log by joining it with an invite code.
 
 The REST API lives in [pantry-tracker-api](https://github.com/Rustem-Stilinski/pantry-tracker-api).
 
@@ -13,9 +14,11 @@ The REST API lives in [pantry-tracker-api](https://github.com/Rustem-Stilinski/p
 ```
 src/app/
 ├── core/     API client, session, route guards, formatting helpers
-├── log/      the main page: log form, quick repeats, totals, entries by day
+├── log/      Used items: log form, quick repeats, totals, entries by day
+├── prices/   Prices: add a receipt (photo → check → save), items and price changes, item history chart,
+│             compare stores, receipts by month, spending by month
 ├── pages/    sign-in and start/join a log
-└── shared/   tally-mark component
+└── shared/   site header, tally-mark component
 ```
 
 ## Run
@@ -70,6 +73,18 @@ Deploy Hook). Without the secret the job just skips with a warning.
 3. Add a second CloudFront behavior for `/api/*` that forwards to the API's load balancer, with
    caching disabled and all cookies, headers and query strings passed through. This keeps the app
    and API on one origin, so no CORS setup is needed.
+
+## Adding a receipt
+
+1. Take or choose up to 4 photos (top to bottom for a long receipt). The browser shrinks each to at
+   most 2400 px on the long edge before upload (`core/photo.ts`).
+2. The API reads them with Claude and returns a draft. Nothing is saved yet.
+3. Check the draft: every line's name, quantity, unit, price and category is editable. Changing
+   quantity or price recalculates the line total, and a note appears if the lines don't add up to the
+   receipt total.
+4. Save. The receipt page then lists any item whose price moved 10% or more since you last bought it.
+
+Without an API key on the server, step 2 says so and **Enter it by hand** opens the same form empty.
 
 ## How it talks to the API
 

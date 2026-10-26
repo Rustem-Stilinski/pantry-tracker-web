@@ -15,7 +15,7 @@ type Mode = 'sign-in' | 'register';
     <div class="app narrow">
       <header class="top">
         <div class="brand">
-          <h1>Used Items Log</h1>
+          <h1>Pantry Tracker</h1>
           <p class="sub">Write down what gets used up and how much, so everyone can see what to restock.</p>
         </div>
       </header>
