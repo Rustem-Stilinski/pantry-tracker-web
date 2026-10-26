@@ -1,5 +1,7 @@
 # pantry-tracker-web
 
+[![CI](https://github.com/Rustem-Stilinski/pantry-tracker-web/actions/workflows/ci.yml/badge.svg)](https://github.com/Rustem-Stilinski/pantry-tracker-web/actions/workflows/ci.yml)
+
 Web app for **Used Items Log**: a shared log of things that get used up (paper towels, coffee pods,
 printer paper), with monthly totals so you know what to restock. Several people share one log by
 joining it with an invite code.
@@ -35,6 +37,9 @@ origin and the session and CSRF cookies work as they will in production.
 npm test -- --watch=false   # Vitest unit tests
 npx ng build                # production build in dist/frontend/browser
 ```
+
+CI (`.github/workflows/ci.yml`) runs the tests, the production build and a Docker image build on
+every push and pull request. Each run keeps the built app as a `web-dist` artifact for 7 days.
 
 ## Docker
 
