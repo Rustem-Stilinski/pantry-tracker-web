@@ -69,3 +69,20 @@ jobs:
       - name: Container log
         if: always()
         run: docker logs web || true
+
+  deploy:
+    name: Deploy to Render
+    needs: [test, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::warning title=Not deployed::Add the RENDER_DEPLOY_HOOK_URL repository secret (Render service > Settings > Deploy Hook) to deploy from CI."
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
+          echo "Render deploy started for ${GITHUB_SHA::7}"

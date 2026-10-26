@@ -53,6 +53,15 @@ docker run -p 4200:80 -e API_URL=http://host.docker.internal:8080 pantry-tracker
 To run the API, database and this app together, use the compose file in pantry-tracker-api
 (`docker compose --profile full up --build`, with both repos cloned side by side).
 
+## Deploying to Render (current)
+
+Live at https://pantry-tracker-web.onrender.com as a Docker web service, with
+`API_URL=https://pantry-tracker-api-mys0.onrender.com` so nginx forwards `/api` to the API.
+
+CI's last job calls the service's deploy hook after the tests, build and Docker image all pass on
+`main`. The hook URL is the `RENDER_DEPLOY_HOOK_URL` repository secret (Render service > Settings >
+Deploy Hook). Without the secret the job just skips with a warning.
+
 ## Deploying to AWS
 
 1. `npx ng build` and upload `dist/frontend/browser` to an S3 bucket.
