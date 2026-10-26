@@ -2,12 +2,15 @@
 
 export const CATEGORIES = ['Kitchen', 'Pantry', 'Bathroom', 'Cleaning', 'Laundry', 'Office', 'Other'] as const;
 
-export const UNITS = ['pcs', 'pack', 'box', 'roll', 'bottle', 'can', 'bag', 'carton', 'tube', 'sheet', 'pod', 'g', 'kg', 'ml', 'L'];
+export const UNITS = [
+  'pcs', 'pack', 'box', 'roll', 'bottle', 'can', 'bag', 'carton', 'tube', 'sheet', 'pod',
+  'lb', 'oz', 'gal', 'fl oz', 'g', 'kg', 'ml', 'L',
+];
 
 const PLURALS: Record<string, string> = {
   pack: 'packs', box: 'boxes', roll: 'rolls', bottle: 'bottles', can: 'cans', bag: 'bags',
   carton: 'cartons', tube: 'tubes', sheet: 'sheets', pod: 'pods', piece: 'pieces', jar: 'jars',
-  tablet: 'tablets', bar: 'bars', loaf: 'loaves',
+  tablet: 'tablets', bar: 'bars', loaf: 'loaves', lb: 'lbs',
 };
 
 /** 2 -> "2", 1.5 -> "1.5", 1.25 -> "1.25". */

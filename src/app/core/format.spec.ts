@@ -8,6 +8,9 @@ describe('format helpers', () => {
     expect(unitLabel(3, 'roll')).toBe('rolls');
     expect(unitLabel(2, 'box')).toBe('boxes');
     expect(unitLabel(2, 'kg')).toBe('kg');
+    expect(unitLabel(1, 'lb')).toBe('lb');
+    expect(amount(2.5, 'lb')).toBe('2.5 lbs');
+    expect(amount(12, 'oz')).toBe('12 oz');
     expect(amount(1.5, 'L')).toBe('1.5 L');
     expect(amount(2, 'pcs')).toBe('2 pcs');
   });
