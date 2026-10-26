@@ -6,7 +6,7 @@ export const CATEGORIES = ['Kitchen', 'Pantry', 'Bathroom', 'Cleaning', 'Laundry
 export const UNIT_GROUPS: { label: string; units: string[] }[] = [
   { label: 'Count', units: ['pcs', 'pack', 'box', 'roll', 'bottle', 'can', 'bag', 'carton', 'tube', 'sheet', 'pod'] },
   { label: 'Weight', units: ['lb', 'oz', 'kg', 'g'] },
-  { label: 'Volume', units: ['gal', 'fl oz', 'L', 'ml'] },
+  { label: 'Volume', units: ['cup', 'tbsp', 'tsp', 'gal', 'fl oz', 'L', 'ml'] },
 ];
 
 export const UNITS = UNIT_GROUPS.flatMap((g) => g.units);
@@ -17,7 +17,7 @@ export const OTHER_UNIT = '__other__';
 const PLURALS: Record<string, string> = {
   pack: 'packs', box: 'boxes', roll: 'rolls', bottle: 'bottles', can: 'cans', bag: 'bags',
   carton: 'cartons', tube: 'tubes', sheet: 'sheets', pod: 'pods', piece: 'pieces', jar: 'jars',
-  tablet: 'tablets', bar: 'bars', loaf: 'loaves', lb: 'lbs',
+  tablet: 'tablets', bar: 'bars', loaf: 'loaves', lb: 'lbs', cup: 'cups',
 };
 
 /** 2 -> "2", 1.5 -> "1.5", 1.25 -> "1.25". */
