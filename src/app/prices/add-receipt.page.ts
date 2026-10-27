@@ -4,11 +4,13 @@ import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
 import { UNITS, dayKey, errorMessage } from '../core/format';
-import { ReceiptDraft, SaveReceipt } from '../core/models';
+import { ReceiptAlias, ReceiptDraft, SaveReceipt } from '../core/models';
 import { RECEIPT_CATEGORIES, money, parseAmount, round2 } from '../core/money';
 import { shrinkPhoto } from '../core/photo';
 import { Toasts } from '../core/toast.service';
+import { ReadProgress, readOnDevice } from './device-reader';
 import { householdId } from './household-id';
+import { bestReading } from './receipt-parser';
 
 type Step = 'photos' | 'reading' | 'review';
 
@@ -80,6 +82,12 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
             <button type="button" class="primary" [disabled]="!photos().length || preparing()" (click)="read()">
               {{ preparing() ? 'Preparing photos…' : 'Read receipt' }}
             </button>
+            @if (offerDevice()) {
+              <button type="button" class="secondary" [disabled]="!photos().length" (click)="readHere()">Read it on this device instead</button>
+            }
+            @if (claude() === false) {
+              <p class="hint center-text">Reads on this device for free. You’ll check every line before saving.</p>
+            }
             <button type="button" class="link-btn center" (click)="enterByHand()">Enter it by hand instead</button>
           </div>
         </section>
@@ -89,8 +97,19 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
         <section class="slip add-slip reading" aria-live="polite">
           <div class="slip-body">
             <div class="spinner" aria-hidden="true"></div>
-            <strong>Reading your receipt…</strong>
-            <p class="hint">This usually takes 10–20 seconds.</p>
+            @if (progress(); as p) {
+              <strong>{{ p.stage === 'Reading' ? 'Reading your receipt on this device…' : 'Getting the reader ready…' }}</strong>
+              <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="p.percent">
+                <span [style.width.%]="p.percent"></span>
+              </div>
+              <p class="hint">
+                @if (p.photos > 1) { Photo {{ p.photo }} of {{ p.photos }} · }{{ p.percent }}%
+                @if (p.stage !== 'Reading') { · The first time takes longer while the reader downloads (about 7 MB). }
+              </p>
+            } @else {
+              <strong>Reading your receipt…</strong>
+              <p class="hint">This usually takes 10–20 seconds.</p>
+            }
           </div>
         </section>
       }
@@ -200,6 +219,11 @@ export class AddReceiptPage {
   protected readonly total = signal('');
   protected readonly notes = signal<string | null>(null);
   protected readonly knownStores = signal<string[]>([]);
+  /** null until the server answers; false means photos are read on this device. */
+  protected readonly claude = signal<boolean | null>(null);
+  /** After a server read fails, offer reading on the device instead. */
+  protected readonly offerDevice = signal(false);
+  protected readonly progress = signal<ReadProgress | null>(null);
 
   protected readonly linesSum = computed(() =>
     round2(this.rows().reduce((sum, r) => sum + (parseAmount(r.lineTotal) || 0), 0)));
@@ -222,6 +246,9 @@ export class AddReceiptPage {
 
   constructor() {
     firstValueFrom(this.api.stores(this.householdId())).then((s) => this.knownStores.set(s)).catch(() => undefined);
+    firstValueFrom(this.api.receiptReader(this.householdId()))
+      .then((status) => this.claude.set(status.claude))
+      .catch(() => this.claude.set(false));
     inject(DestroyRef).onDestroy(() => this.photos().forEach((p) => URL.revokeObjectURL(p.url)));
   }
 
@@ -257,8 +284,15 @@ export class AddReceiptPage {
     this.photos.update((list) => list.filter((p) => p.id !== id));
   }
 
+  /** Claude on the server when it's set up, otherwise this device. */
   protected async read(): Promise<void> {
+    if (this.claude() !== true) {
+      await this.readHere();
+      return;
+    }
     this.message.set('');
+    this.offerDevice.set(false);
+    this.progress.set(null);
     this.step.set('reading');
     try {
       const draft = await firstValueFrom(this.api.readReceipt(this.householdId(), this.photos().map((p) => p.blob)));
@@ -266,7 +300,30 @@ export class AddReceiptPage {
       this.step.set('review');
     } catch (err) {
       this.message.set(errorMessage(err, 'Couldn’t read the receipt. Try again, or enter it by hand.'));
+      this.offerDevice.set(true);
       this.step.set('photos');
+    }
+  }
+
+  /** Free, private reading on this device, then the household's learned names on top. */
+  protected async readHere(): Promise<void> {
+    this.message.set('');
+    this.offerDevice.set(false);
+    this.progress.set({ photo: 1, photos: this.photos().length, percent: 0, stage: 'Getting the reader ready' });
+    this.step.set('reading');
+    try {
+      const [readings, aliases] = await Promise.all([
+        readOnDevice(this.photos().map((p) => p.blob), (p) => this.progress.set(p)),
+        firstValueFrom(this.api.receiptAliases(this.householdId())).catch((): ReceiptAlias[] => []),
+      ]);
+      this.fill(bestReading(readings, { knownStores: this.knownStores(), aliases }));
+      this.step.set('review');
+    } catch (err) {
+      console.error('On-device reading failed', err);
+      this.message.set('This device couldn’t read the photo. Try again, use a sharper photo, or enter it by hand.');
+      this.step.set('photos');
+    } finally {
+      this.progress.set(null);
     }
   }
 
@@ -287,6 +344,7 @@ export class AddReceiptPage {
     this.tax.set('');
     this.total.set('');
     this.notes.set(null);
+    this.offerDevice.set(false);
     this.step.set('photos');
   }
 

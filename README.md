@@ -77,14 +77,28 @@ Deploy Hook). Without the secret the job just skips with a warning.
 ## Adding a receipt
 
 1. Take or choose up to 4 photos (top to bottom for a long receipt). The browser shrinks each to at
-   most 2400 px on the long edge before upload (`core/photo.ts`).
-2. The API reads them with Claude and returns a draft. Nothing is saved yet.
+   most 2400 px on the long edge (`core/photo.ts`).
+2. The photos are read in one of two ways:
+   - **On the device (free, the default).** When the server has no Claude key, the app reads the
+     photos itself with [Tesseract](https://github.com/naptha/tesseract.js), so nothing leaves the
+     phone until the receipt is saved. It crops to the paper and boosts contrast
+     (`prices/device-reader.ts`), reads each photo in two page-layout modes, turns both readings into
+     drafts (`prices/receipt-parser.ts`: item lines, weights, `2 @ 1.29` lines, coupons, tax flags,
+     totals, store, date) and keeps the one whose lines add up to the printed totals. The reader's
+     files (~7 MB) are served by this app under `/ocr` and cached after the first use.
+   - **With Claude.** When the API has `ANTHROPIC_API_KEY`, the server reads the photos with Claude,
+     which also expands abbreviations. If that fails, **Read it on this device instead** appears.
 3. Check the draft: every line's name, quantity, unit, price and category is editable. Changing
    quantity or price recalculates the line total, and a note appears if the lines don't add up to the
    receipt total.
 4. Save. The receipt page then lists any item whose price moved 10% or more since you last bought it.
 
-Without an API key on the server, step 2 says so and **Enter it by hand** opens the same form empty.
+**Learned names.** On-device reading keeps names as printed ("Gv 2% mlk gal"). Each saved line keeps
+its printed text, and the API returns what each printed line was last saved as
+(`GET /receipts/aliases`), so after you rename it once, the next receipt shows "Milk 2%, 1 gal".
+Close misreads still match.
+
+**Enter it by hand** opens the same form empty.
 
 ## How it talks to the API
 
