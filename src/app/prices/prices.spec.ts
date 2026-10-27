@@ -26,7 +26,7 @@ describe('money helpers', () => {
 });
 
 describe('editing a receipt line', () => {
-  const row: Row = { id: 1, name: 'Bananas', receiptText: null, qty: '2', unit: 'lb', unitPrice: '0.59', lineTotal: '1.18', category: 'Produce' };
+  const row: Row = { id: 1, name: 'Bananas', receiptText: null, qty: '2', unit: 'lb', unitPrice: '0.59', lineTotal: '1.18', category: 'Produce', suggestion: null };
 
   it('recalculates the total from quantity and price', () => {
     expect(editRow(row, 'qty', '2.31').lineTotal).toBe('1.36');

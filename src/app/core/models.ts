@@ -101,6 +101,8 @@ export interface DraftItem {
   unitPrice: number;
   lineTotal: number;
   category: string;
+  /** Another reading of the line total worth checking, when the lines don't add up (on-device reading only). */
+  suggestion?: number | null;
 }
 
 export interface SaveReceipt {
