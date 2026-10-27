@@ -359,4 +359,19 @@ describe('aliases and categories', () => {
     expect(categoryFor('BOUNTY PAPER TOWEL 6')).toBe('Household');
     expect(categoryFor('SOMETHING ELSE')).toBe('Other');
   });
+
+  it('knows Wegmans abbreviations and brands', () => {
+    expect(categoryFor('WB BATH 12 ROLL')).toBe('Household'); // toilet paper, not bread rolls
+    expect(categoryFor('WB SOURDOUGH BREAD')).toBe('Bakery');
+    expect(categoryFor('HAWAIIAN ROLLS 12CT')).toBe('Bakery');
+    expect(categoryFor('WB BL CKN BREAST')).toBe('Meat & seafood');
+    expect(categoryFor('CHOB RSPBRRY LMN')).toBe('Dairy & eggs');
+    expect(categoryFor('WB MICRO ASPARAGUS')).toBe('Produce');
+    expect(categoryFor('WB MEDIUM SALSA')).toBe('Pantry');
+    expect(categoryFor('WBO TACO SEASONING')).toBe('Pantry');
+    expect(categoryFor('GOYA BLK BEAN SOUP')).toBe('Pantry');
+    expect(categoryFor('GLAD FOOD STORAGE')).toBe('Household');
+    expect(categoryFor('EXTRA PEPPERMINT')).toBe('Snacks');
+    expect(categoryFor('CHKOUT BAG CHARGE')).toBe('Other');
+  });
 });
