@@ -191,6 +191,158 @@ JASMINE RICE 20LB        21.99:F\nTOTAL 33.97`, { today: TODAY });
   });
 });
 
+/**
+ * Wegmans layout (invented lines): quantity and weight lines above their item, department codes
+ * (WT, SC, MR) before the name, "**** BALANCE" as the total, then card lines and the tax breakdown.
+ */
+const WEGMANS = `
+Wegmans
+Every day you get our best!
+100 MAIN STREET
+ANYTOWN, VA 22000
+(555) 555-0100
+10/18/26  OP# 123456
+          WB SOURDOUGH BREAD       5.99 B
+          WB LARGE EGGS            1.69 B
+ 2 @ 5.49
+          FAIRLIFE 2% MILK        10.98 B
+          WB BATH 12 ROLL         11.99 T
+ 2.49 lb @ 0.49 /lb
+WT        BANANAS                  1.22 B
+ 3 @ 3.49
+          WB MICRO ASPARAGUS      10.47 B
+ 1.98 lb @ 3.29 /lb
+WT        GREEN SDLS GRAPES        6.51 B
+ 3 @ 0.05
+MR        CHKOUT BAG CHARGE        0.15 T
+          TAX                      1.10
+     **** BALANCE                 50.10
+MASTERCARD PURCHASE
+CARD NUMBER: ************0000 H
+AUTH: 000000  RCPT: 00000
+VERIFIED BY PIN
+          CREDIT CARD             50.10
+          CHANGE                   0.00
+VA 6% Sales Tax                    0.73
+VA 1.0% SALES TAX                  0.37
+TOTAL TAX                          1.10
+10/18/26 12:38pm
+SHOPPERS CLUB WOULD HAVE SAVED $0.80
+`;
+
+describe('Wegmans receipts', () => {
+  it('reads the layout: codes, quantity lines above items, BALANCE, card lines and tax breakdown', () => {
+    const draft = parseReceiptText(WEGMANS, { today: TODAY });
+    expect(draft.storeName).toBe('Wegmans');
+    expect(draft.purchaseDate).toBe('2026-10-18');
+    expect(draft.purchaseTime).toBe('12:38');
+    expect(draft.tax).toBe(1.1);
+    expect(draft.total).toBe(50.1);
+    expect(draft.items.map((i) => i.receiptText)).toEqual([
+      'WB SOURDOUGH BREAD', 'WB LARGE EGGS', 'FAIRLIFE 2% MILK', 'WB BATH 12 ROLL', 'BANANAS',
+      'WB MICRO ASPARAGUS', 'GREEN SDLS GRAPES', 'CHKOUT BAG CHARGE',
+    ]);
+    expect(draft.items[2]).toMatchObject({ quantity: 2, unit: 'pcs', unitPrice: 5.49, lineTotal: 10.98 });
+    expect(draft.items[4]).toMatchObject({ quantity: 2.49, unit: 'lb', unitPrice: 0.49, lineTotal: 1.22 });
+    expect(draft.items[5]).toMatchObject({ quantity: 3, unitPrice: 3.49, lineTotal: 10.47 });
+    expect(draft.items[7]).toMatchObject({ quantity: 3, unitPrice: 0.05, lineTotal: 0.15 });
+    // The "would have saved" line is not a discount, and nothing after the card lines is an item.
+    expect(draft.notes).not.toContain("don't add up");
+  });
+
+  it('copes with what a dim, curled photo of one gives', () => {
+    // The kinds of slips Tesseract made on a real photo: a script logo misread, "@" read as "8",
+    // a lost decimal point, "B" read as "8b", specks at the line ends, the amounts of TAX and
+    // BALANCE on the line above their labels.
+    const draft = parseReceiptText(`
+f   egrnans
+    Every day you get cur best!
+10/18/26  OP$ 123456
+f                     WB SOURDOUGH BREAD     599 8
+          WB LARGE EGGS            1.69 B          k
+2865.49
+          FAIRLIFE 2% MILK        10,98 B
+          WB BATH 12 ROLL         11.99 1
+2.49 1b @ 0.49 /1b
+ut        BANANAS                  1.228
+383.49
+          WB MICRO ASPARAGUS      10.47 B
+1.98 lb @ 3.29 /lb
+wT        GREEN SDLS GRAPES        6.61 8b
+3 8 0.05
+HR        CHKOUT BAG CHARGE        0.15 T
+                                   1.10
+          TAX
+                                  50.10
+x¥x% BALANCE
+HASTERCARD PURCHASE
+SHOPPERS CLUB WOULD HAVE SAVED $0.80
+`, { today: TODAY });
+    expect(draft.storeName).toBe('Wegmans');
+    expect(draft.items.map((i) => [i.receiptText, i.lineTotal])).toEqual([
+      ['WB SOURDOUGH BREAD', 5.99], ['WB LARGE EGGS', 1.69], ['FAIRLIFE 2% MILK', 10.98], ['WB BATH 12 ROLL', 11.99],
+      ['BANANAS', 1.22], ['WB MICRO ASPARAGUS', 10.47], ['GREEN SDLS GRAPES', 6.51], ['CHKOUT BAG CHARGE', 0.15],
+    ]);
+    expect(draft.items[2]).toMatchObject({ quantity: 2, unitPrice: 5.49 });
+    expect(draft.items[5]).toMatchObject({ quantity: 3, unitPrice: 3.49 });
+    expect(draft.items[7]).toMatchObject({ quantity: 3, unitPrice: 0.05 });
+    expect(draft.tax).toBe(1.1);
+    expect(draft.total).toBe(50.1);
+    // 6.61 was a misread: the weight line (1.98 lb × 3.29) and the total both say 6.51.
+    expect(draft.notes).not.toContain("don't add up");
+  });
+
+  it('offers the other reading of a price when the lines still do not add up', () => {
+    const draft = parseReceiptText(`
+WEGMANS
+1.98 lb @ 3.29 /lb
+WT        GREEN SDLS GRAPES        6.61 B
+          GOYA BLK BEAN SOUP       4.68 B
+          TAX                      0.00
+     **** BALANCE                 11.09
+`, { today: TODAY });
+    // Fixing the grapes alone leaves 10 cents: no unambiguous fix, so the lines stay as read…
+    expect(draft.items.map((i) => i.lineTotal)).toEqual([6.61, 4.68]);
+    expect(draft.notes).toContain("don't add up");
+    // …and the grapes line points at what its weight line works out to.
+    expect(draft.items[0].suggestion).toBe(6.51);
+    expect(draft.items[1].suggestion).toBeUndefined();
+  });
+});
+
+describe('combining readings', () => {
+  it('fills a line one reading missed and picks the price that makes the receipt add up', () => {
+    // Each layout mode misses or misreads something different.
+    const block = `GIANT
+GNT LG EGGS 12CT              3.49 F
+GV 2% MLK GAL                 3.98 F
+COKE 12PK                    18.98 T
+2 @ 6.99
+SUBTOTAL                     22.81
+TOTAL                        22.81`;
+    const column = `GIANT
+GV 2% MLK GAL                 3.98 F
+COKE 12PK                    13.98 T
+2 @ 6.99
+BANANAS                       1.36 F
+TOTAL                        22.81`;
+    const draft = bestReading([block, column], { today: TODAY });
+    expect(draft.items.map((i) => [i.receiptText, i.lineTotal])).toEqual([
+      ['GNT LG EGGS 12CT', 3.49], ['GV 2% MLK GAL', 3.98], ['COKE 12PK', 13.98], ['BANANAS', 1.36],
+    ]);
+    expect(draft.items[2]).toMatchObject({ quantity: 2, unitPrice: 6.99 });
+    expect(draft.notes).not.toContain("don't add up");
+  });
+
+  it('leaves the best reading alone when no single fix makes it add up', () => {
+    const a = 'SHOP\nMILK 3.98\nBREAD 2.49\nTOTAL 10.00';
+    const b = 'SHOP\nMILK 3.98\nBREAD 2.49\nTOTAL 10.00';
+    const draft = bestReading([a, b], { today: TODAY });
+    expect(draft.items.map((i) => i.lineTotal)).toEqual([3.98, 2.49]);
+    expect(draft.notes).toContain("don't add up");
+  });
+});
+
 describe('aliases and categories', () => {
   it('compares printed lines without prices, codes or spacing', () => {
     expect(aliasKey('GV 2% MLK GAL      3.98 F')).toBe('GV 2% MLK GAL');

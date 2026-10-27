@@ -81,11 +81,23 @@ Deploy Hook). Without the secret the job just skips with a warning.
 2. The photos are read in one of two ways:
    - **On the device (free, the default).** When the server has no Claude key, the app reads the
      photos itself with [Tesseract](https://github.com/naptha/tesseract.js), so nothing leaves the
-     phone until the receipt is saved. It crops to the paper and boosts contrast
-     (`prices/device-reader.ts`), reads each photo in two page-layout modes, turns both readings into
-     drafts (`prices/receipt-parser.ts`: item lines, weights, `2 @ 1.29` lines, coupons, tax flags,
-     totals, store, date) and keeps the one whose lines add up to the printed totals. The reader's
-     files (~7 MB) are served by this app under `/ocr` and cached after the first use.
+     phone until the receipt is saved. The reader's files (~7 MB) are served by this app under `/ocr`
+     and cached after the first use. Before reading:
+     - Each photo shows a **frame around the receipt**, found where thin dark strokes (print) are
+       dense, so a patterned bedspread or wood table doesn't fool it (`prices/receipt-image.ts`).
+       Drag a corner, or focus it and use the arrow keys, to adjust (`prices/receipt-frame.component.ts`).
+     - The frame is cropped, contrast stretched, and the **lines of print straightened** strip by
+       strip, which follows a receipt that curls as well as one photographed at an angle. Small print
+       is enlarged to about 1300 px across (`prices/device-reader.ts`).
+
+     Each photo is read in two page-layout modes. The parser (`prices/receipt-parser.ts`) turns each
+     reading into lines: items, weights, `2 @ 1.29` lines above or below their item, department codes
+     (`WT`, `SC`), coupons, tax flags, `BALANCE`/`TOTAL`, the card slip and tax breakdown after it,
+     store, date and time. It copes with common misreads (`@` read as `8`, a lost decimal point, a
+     tax flag read as `8b`, specks at the line ends). Then it **combines the two readings**: starting
+     from the one that best matches its own totals, it fills in lines the other caught and switches
+     a price to its other reading only where that makes the receipt add up to the cent. A price
+     that was read two ways and still doesn't add up shows **Also read as $x.xx · Use** on its line.
    - **With Claude.** When the API has `ANTHROPIC_API_KEY`, the server reads the photos with Claude,
      which also expands abbreviations. If that fails, **Read it on this device instead** appears.
 3. Check the draft: every line's name, quantity, unit, price and category is editable. Changing

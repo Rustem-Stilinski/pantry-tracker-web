@@ -8,8 +8,10 @@ import { ReceiptAlias, ReceiptDraft, SaveReceipt } from '../core/models';
 import { RECEIPT_CATEGORIES, money, parseAmount, round2 } from '../core/money';
 import { shrinkPhoto } from '../core/photo';
 import { Toasts } from '../core/toast.service';
-import { ReadProgress, readOnDevice } from './device-reader';
+import { ReadProgress, findReceipt, readOnDevice } from './device-reader';
 import { householdId } from './household-id';
+import { ReceiptFrameComponent } from './receipt-frame.component';
+import { Frame, WHOLE_PHOTO } from './receipt-image';
 import { bestReading } from './receipt-parser';
 
 type Step = 'photos' | 'reading' | 'review';
@@ -18,6 +20,8 @@ interface Photo {
   id: number;
   blob: Blob;
   url: string;
+  /** Where the receipt is, for reading on this device; null while it's being found. */
+  frame: Frame | null;
 }
 
 /** One editable receipt line. Numbers are kept as typed text so editing never fights the cursor. */
@@ -30,6 +34,8 @@ export interface Row {
   unitPrice: string;
   lineTotal: string;
   category: string;
+  /** Another reading of the total to offer, when the lines don't add up. */
+  suggestion: string | null;
 }
 
 const MAX_PHOTOS = 4;
@@ -51,7 +57,7 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
 @Component({
   selector: 'app-add-receipt-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [RouterLink, ReceiptFrameComponent],
   template: `
     <a routerLink="/prices/receipts" class="back-link">‹ Receipts</a>
 
@@ -66,7 +72,18 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
               <span>Lay the receipt flat in good light. Long receipt? Use up to {{ maxPhotos }} photos, top to bottom.</span>
             </label>
 
-            @if (photos().length) {
+            @if (photos().length && framing()) {
+              <p class="hint">Drag the corners so the frame holds just the receipt. Leaving out the table or bedspread around it helps the reader.</p>
+              <ol class="framed-photos">
+                @for (p of photos(); track p.id; let i = $index) {
+                  <li>
+                    <app-receipt-frame [src]="p.url" [label]="'Receipt photo ' + (i + 1)"
+                                       [frame]="p.frame" (frameChange)="setFrame(p.id, $event)" />
+                    <button type="button" class="thumb-remove" (click)="removePhoto(p.id)" [attr.aria-label]="'Remove photo ' + (i + 1)">✕</button>
+                  </li>
+                }
+              </ol>
+            } @else if (photos().length) {
               <ol class="thumbs">
                 @for (p of photos(); track p.id; let i = $index) {
                   <li>
@@ -170,6 +187,12 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
                     </select>
                   </label>
                   <button type="button" class="del" (click)="removeRow(row.id)" [attr.aria-label]="'Remove line ' + (i + 1)">✕</button>
+                  @if (row.suggestion && row.suggestion !== row.lineTotal) {
+                    <p class="rr-suggest">
+                      Also read as <strong>{{ money(+row.suggestion) }}</strong>.
+                      <button type="button" class="link-btn" (click)="edit(row.id, 'lineTotal', row.suggestion)">Use {{ money(+row.suggestion) }}</button>
+                    </p>
+                  }
                 </div>
               }
               <button type="button" class="link-btn" (click)="addRow()">+ Add a line</button>
@@ -224,6 +247,8 @@ export class AddReceiptPage {
   /** After a server read fails, offer reading on the device instead. */
   protected readonly offerDevice = signal(false);
   protected readonly progress = signal<ReadProgress | null>(null);
+  /** Photos are read on this device, so show where the receipt is and let the person adjust it. */
+  protected readonly framing = computed(() => this.claude() === false || this.offerDevice());
 
   protected readonly linesSum = computed(() =>
     round2(this.rows().reduce((sum, r) => sum + (parseAmount(r.lineTotal) || 0), 0)));
@@ -269,13 +294,21 @@ export class AddReceiptPage {
     try {
       for (const file of files.slice(0, Math.max(0, room))) {
         const blob = await shrinkPhoto(file);
-        this.photos.update((list) => [...list, { id: this.nextId++, blob, url: URL.createObjectURL(blob) }]);
+        const id = this.nextId++;
+        this.photos.update((list) => [...list, { id, blob, url: URL.createObjectURL(blob), frame: null }]);
+        findReceipt(blob)
+          .catch(() => WHOLE_PHOTO)
+          .then((frame) => this.photos.update((list) => list.map((p) => (p.id === id && !p.frame ? { ...p, frame } : p))));
       }
     } catch (err) {
       this.message.set(err instanceof Error ? err.message : 'That photo couldn’t be used. Try another.');
     } finally {
       this.preparing.set(false);
     }
+  }
+
+  protected setFrame(id: number, frame: Frame | null): void {
+    this.photos.update((list) => list.map((p) => (p.id === id ? { ...p, frame } : p)));
   }
 
   protected removePhoto(id: number): void {
@@ -313,7 +346,7 @@ export class AddReceiptPage {
     this.step.set('reading');
     try {
       const [readings, aliases] = await Promise.all([
-        readOnDevice(this.photos().map((p) => p.blob), (p) => this.progress.set(p)),
+        readOnDevice(this.photos().map((p) => ({ blob: p.blob, frame: p.frame })), (p) => this.progress.set(p)),
         firstValueFrom(this.api.receiptAliases(this.householdId())).catch((): ReceiptAlias[] => []),
       ]);
       this.fill(bestReading(readings, { knownStores: this.knownStores(), aliases }));
@@ -365,6 +398,7 @@ export class AddReceiptPage {
       unitPrice: String(item.unitPrice ?? ''),
       lineTotal: item.lineTotal != null ? Number(item.lineTotal).toFixed(2) : '',
       category: item.category || 'Other',
+      suggestion: item.suggestion != null ? Number(item.suggestion).toFixed(2) : null,
     }));
     this.rows.set(rows.length ? rows : [this.blankRow()]);
   }
@@ -393,7 +427,7 @@ export class AddReceiptPage {
   }
 
   private blankRow(): Row {
-    return { id: this.nextId++, name: '', receiptText: null, qty: '1', unit: 'pcs', unitPrice: '', lineTotal: '', category: 'Other' };
+    return { id: this.nextId++, name: '', receiptText: null, qty: '1', unit: 'pcs', unitPrice: '', lineTotal: '', category: 'Other', suggestion: null };
   }
 
   // ---------- save ----------
