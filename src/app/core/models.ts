@@ -83,6 +83,8 @@ export interface ReceiptAlias {
 /** What Claude read off a receipt photo; any field can be null. Nothing is saved yet. */
 export interface ReceiptDraft {
   storeName: string | null;
+  /** The branch, as printed under the store's name: "11620 Monument Dr, Fairfax, VA 22030". */
+  storeLocation?: string | null;
   purchaseDate: string | null;
   purchaseTime: string | null;
   currency: string | null;
@@ -107,6 +109,7 @@ export interface DraftItem {
 
 export interface SaveReceipt {
   storeName: string;
+  storeLocation: string | null;
   purchasedAt: string;
   subtotal: number | null;
   tax: number | null;
@@ -125,6 +128,7 @@ export interface SaveReceipt {
 export interface ReceiptSummary {
   id: string;
   storeName: string;
+  storeLocation: string | null;
   purchasedAt: string;
   total: number;
   itemCount: number;
@@ -144,6 +148,7 @@ export interface ReceiptLine {
 export interface ReceiptDetail {
   id: string;
   storeName: string;
+  storeLocation: string | null;
   purchasedAt: string;
   subtotal: number | null;
   tax: number | null;
@@ -192,6 +197,7 @@ export interface PricePoint {
   receiptId: string;
   purchasedAt: string;
   storeName: string;
+  storeLocation: string | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;

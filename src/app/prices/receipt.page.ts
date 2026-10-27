@@ -24,6 +24,7 @@ import { householdId } from './household-id';
       @let r = receipt()!;
       <div class="item-head">
         <h2 class="page-title">{{ r.storeName }}</h2>
+        @if (r.storeLocation) { <p class="store-location">{{ r.storeLocation }}</p> }
         <span class="label-caps">{{ dateFmt.format(date(r.purchasedAt)) }} · {{ r.items.length }} items · {{ money(r.total) }}</span>
       </div>
 

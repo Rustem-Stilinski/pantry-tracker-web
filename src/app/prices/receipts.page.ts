@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
-import { errorMessage, monthKey, monthLabel, shiftMonth } from '../core/format';
+import { errorMessage, monthKey, monthLabel, placeName, shiftMonth } from '../core/format';
 import { ReceiptSummary } from '../core/models';
 import { money } from '../core/money';
 import { TIME_ZONE, householdId } from './household-id';
@@ -39,7 +39,7 @@ import { TIME_ZONE, householdId } from './household-id';
         @for (r of receipts(); track r.id) {
           <a class="receipt-row" [routerLink]="['/prices/receipts', r.id]">
             <span class="r-date">{{ dayFmt.format(date(r.purchasedAt)) }}</span>
-            <span class="r-store"><strong>{{ r.storeName }}</strong><small>{{ r.itemCount }} {{ r.itemCount === 1 ? 'item' : 'items' }}</small></span>
+            <span class="r-store"><strong>{{ r.storeName }}</strong><small>@if (r.storeLocation) { {{ place(r.storeLocation) }} · }{{ r.itemCount }} {{ r.itemCount === 1 ? 'item' : 'items' }}</small></span>
             <span class="num strong">{{ money(r.total) }}</span>
           </a>
         }
@@ -58,6 +58,7 @@ export class ReceiptsPage {
   protected readonly total = computed(() => (this.receipts() ?? []).reduce((sum, r) => sum + Number(r.total), 0));
   protected readonly dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   protected readonly money = money;
+  protected readonly place = placeName;
   private seq = 0;
 
   constructor() {
