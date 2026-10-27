@@ -846,6 +846,20 @@ a.price-row:hover .p-item strong { color: var(--accent); }
   border: 0; background: var(--ink); color: var(--paper); cursor: pointer; font-size: var(--t-xs);
 }
 .reading .slip-body { align-items: center; text-align: center; padding-block: 36px; }
+.progress { width: min(320px, 100%); height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--accent); transition: width .2s ease; }
+@media (prefers-reduced-motion: reduce) { .progress span { transition: none; } }
+.secondary {
+  height: 44px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+.secondary:hover:not(:disabled) { background: var(--accent-soft); }
+.center-text { text-align: center; }
 .spinner {
   width: 34px; height: 34px; border-radius: 50%;
   border: 3px solid var(--line); border-top-color: var(--accent);

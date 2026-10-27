@@ -4,7 +4,8 @@ import { Observable } from 'rxjs';
 
 import {
   Entry, FrequentItem, Household, HouseholdSummary, ItemHistory, ItemTotal, NewEntry, PricesOverview,
-  ReceiptDetail, ReceiptDraft, ReceiptSummary, SaveReceipt, StoreComparison, User, YearSpending,
+  ReaderStatus, ReceiptAlias, ReceiptDetail, ReceiptDraft, ReceiptSummary, SaveReceipt, StoreComparison, User,
+  YearSpending,
 } from './models';
 
 /**
@@ -73,6 +74,16 @@ export class Api {
   }
 
   // ---- receipts and prices
+
+  /** Whether the server can read photos (Claude), or the app should read them on the device. */
+  receiptReader(householdId: string): Observable<ReaderStatus> {
+    return this.http.get<ReaderStatus>(`/api/households/${householdId}/receipts/reader`);
+  }
+
+  /** Learned names for printed receipt lines. */
+  receiptAliases(householdId: string): Observable<ReceiptAlias[]> {
+    return this.http.get<ReceiptAlias[]>(`/api/households/${householdId}/receipts/aliases`);
+  }
 
   /** Sends receipt photos to be read. Nothing is saved until saveReceipt. */
   readReceipt(householdId: string, photos: Blob[]): Observable<ReceiptDraft> {

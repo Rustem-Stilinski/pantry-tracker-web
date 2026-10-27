@@ -24,6 +24,13 @@ server {
         proxy_read_timeout 1h;
     }
 
+    # On-device receipt reader: engine and language data (several MB, change only with the app).
+    location /ocr/ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
     # Hashed build files can be cached for a long time.
     location ~* \.(?:js|css|woff2?|ico|png|svg)$ {
         expires 30d;

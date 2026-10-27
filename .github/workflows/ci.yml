@@ -65,6 +65,9 @@ jobs:
           for i in $(seq 1 20); do curl -fs http://localhost:8088/ > /dev/null && break; sleep 1; done
           curl -fsS http://localhost:8088/ | grep -q "<app-root>" && echo "index.html served"
           curl -fsS http://localhost:8088/sign-in | grep -q "<app-root>" && echo "client-side route served"
+          curl -fsS -o /dev/null http://localhost:8088/ocr/worker.min.js && echo "receipt reader worker served"
+          curl -fsS -o /dev/null http://localhost:8088/ocr/core/tesseract-core-simd-lstm.wasm.js && echo "receipt reader engine served"
+          curl -fsS -o /dev/null http://localhost:8088/ocr/lang/eng.traineddata.gz && echo "receipt reader language data served"
 
       - name: Container log
         if: always()

@@ -67,6 +67,19 @@ export interface NewEntry {
 
 // ---------- prices ----------
 
+/** Which reader the server offers; without a Claude key, photos are read on the device. */
+export interface ReaderStatus {
+  claude: boolean;
+}
+
+/** What a printed receipt line ("GV 2% MLK GAL") was last saved as. */
+export interface ReceiptAlias {
+  receiptText: string;
+  name: string;
+  unit: string;
+  category: string;
+}
+
 /** What Claude read off a receipt photo; any field can be null. Nothing is saved yet. */
 export interface ReceiptDraft {
   storeName: string | null;
