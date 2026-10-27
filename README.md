@@ -100,7 +100,8 @@ Deploy Hook). Without the secret the job just skips with a warning.
      that was read two ways and still doesn't add up shows **Also read as $x.xx · Use** on its line.
    - **With Claude.** When the API has `ANTHROPIC_API_KEY`, the server reads the photos with Claude,
      which also expands abbreviations. If that fails, **Read it on this device instead** appears.
-3. Check the draft: every line's name, quantity, unit, price and category is editable. Changing
+3. Check the draft: the store, its location (the branch's address, read from under the store's name),
+   date, time, and every line's name, quantity, unit, price and category are editable. Changing
    quantity or price recalculates the line total, and a note appears if the lines don't add up to the
    receipt total.
 4. Save. The receipt page then lists any item whose price moved 10% or more since you last bought it.

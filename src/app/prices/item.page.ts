@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
-import { amount, errorMessage, relativeDay } from '../core/format';
+import { amount, errorMessage, placeName, relativeDay } from '../core/format';
 import { ItemHistory } from '../core/models';
 import { money, percent, unitPrice } from '../core/money';
 import { householdId } from './household-id';
@@ -77,7 +77,7 @@ import { PriceChart } from './price-chart.component';
           @for (p of newestFirst(); track $index) {
             <a class="purchase-row" [routerLink]="['/prices/receipts', p.receiptId]">
               <span>{{ dateFmt.format(date(p.purchasedAt)) }}</span>
-              <span>{{ p.storeName }}</span>
+              <span>{{ p.storeName }}@if (p.storeLocation) { <small class="muted"> · {{ place(p.storeLocation) }}</small>}</span>
               <span class="num">{{ qty(p.quantity, h.summary.unit) }}</span>
               <span class="num">{{ price(p.unitPrice) }}</span>
               <span class="num strong">{{ money(p.lineTotal) }}</span>
@@ -89,6 +89,7 @@ import { PriceChart } from './price-chart.component';
   `,
 })
 export class ItemPage {
+  protected readonly place = placeName;
   /** From the query string: /prices/item?item=Eggs, 12 ct&unit=pcs */
   readonly item = input<string>();
   readonly unit = input<string>();

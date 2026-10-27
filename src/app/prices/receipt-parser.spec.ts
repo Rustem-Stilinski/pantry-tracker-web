@@ -1,4 +1,4 @@
-import { aliasKey, bestReading, categoryFor, matchAlias, parseReceiptText } from './receipt-parser';
+import { aliasKey, bestReading, categoryFor, findLocation, matchAlias, parseReceiptText } from './receipt-parser';
 
 const TODAY = new Date(2026, 9, 26);
 
@@ -44,6 +44,7 @@ describe('parseReceiptText', () => {
   it('reads a grocery receipt', () => {
     const draft = parseReceiptText(GIANT, { today: TODAY });
     expect(draft.storeName).toBe('Giant');
+    expect(draft.storeLocation).toBe('4500 Lee Hwy, Arlington, VA 22207');
     expect(draft.purchaseDate).toBe('2026-10-24');
     expect(draft.purchaseTime).toBe('14:05');
     expect(draft.subtotal).toBe(43.4);
@@ -71,6 +72,7 @@ describe('parseReceiptText', () => {
   it('reads a warehouse receipt with item numbers and a quantity line before its item', () => {
     const draft = parseReceiptText(COSTCO, { today: TODAY });
     expect(draft.storeName).toBe('Costco');
+    expect(draft.storeLocation).toBeNull(); // "Pentagon City #1205" isn't an address
     expect(draft.purchaseDate).toBe('2026-10-20');
     expect(draft.purchaseTime).toBe('18:42');
     expect(draft.items.map((i) => i.receiptText)).toEqual(['KS WATER 40PK', 'ORG SPINACH', 'AVOCADOS']);
@@ -234,6 +236,7 @@ describe('Wegmans receipts', () => {
   it('reads the layout: codes, quantity lines above items, BALANCE, card lines and tax breakdown', () => {
     const draft = parseReceiptText(WEGMANS, { today: TODAY });
     expect(draft.storeName).toBe('Wegmans');
+    expect(draft.storeLocation).toBe('100 Main Street, Anytown, VA 22000');
     expect(draft.purchaseDate).toBe('2026-10-18');
     expect(draft.purchaseTime).toBe('12:38');
     expect(draft.tax).toBe(1.1);
@@ -307,6 +310,31 @@ WT        GREEN SDLS GRAPES        6.61 B
     // …and the grapes line points at what its weight line works out to.
     expect(draft.items[0].suggestion).toBe(6.51);
     expect(draft.items[1].suggestion).toBeUndefined();
+  });
+});
+
+describe('store location', () => {
+  it('joins the street and the city line printed under the name', () => {
+    expect(findLocation(['WEGMANS', '11620 MONUMENT DRIVE', 'FAIRFAX, VA 22030', '(703) 653-1600']))
+      .toBe('11620 Monument Drive, Fairfax, VA 22030');
+    expect(findLocation(['4500 Lee Hwy, Arlington VA 22207  (703) 555-0142'])).toBe('4500 Lee Hwy, Arlington, VA 22207');
+    expect(findLocation(['123 COURT ST, SPRINGFIELD, VA 22150'])).toBe('123 Court St, Springfield, VA 22150');
+  });
+
+  it('takes a city without a ZIP only right after a street address', () => {
+    expect(findLocation(['1101 S Joyce St  Arlington vA'])).toBe('1101 S Joyce St, Arlington, VA');
+    expect(findLocation(['FAIRFAX, VA 22030'])).toBe('Fairfax, VA 22030');
+    expect(findLocation(['THANK YOU VA'])).toBeNull();
+  });
+
+  it('ignores lines that are not addresses', () => {
+    expect(findLocation(['Pentagon City #1205', '10/18/26 OP# 123456', 'GNT LG EGGS 12CT 3.49 F', 'TOTAL TAX 1.98'])).toBeNull();
+  });
+
+  it('comes from whichever reading caught it', () => {
+    const noAddress = 'GIANT\nGNT LG EGGS 12CT 3.49 F\nTOTAL 3.49';
+    const withAddress = 'GIANT\n4500 Lee Hwy, Arlington VA 22207\nGNT LG EGGS 12CT 3.49 F\nTOTAL 3.49';
+    expect(bestReading([noAddress, withAddress], { today: TODAY }).storeLocation).toBe('4500 Lee Hwy, Arlington, VA 22207');
   });
 });
 

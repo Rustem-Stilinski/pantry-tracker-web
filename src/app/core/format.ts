@@ -110,6 +110,15 @@ export function tallyGroups(count: number, max = 20): number[] {
 }
 
 /** Pulls the human-readable message out of an API error (RFC 9457 problem "detail"). */
+/** "11620 Monument Dr, Fairfax, VA 22030" → "Fairfax, VA": enough to tell branches apart in a list. */
+export function placeName(location: string | null | undefined): string {
+  if (!location) return '';
+  const match = /([A-Za-z][A-Za-z .'-]*?),?\s+([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/.exec(location);
+  if (!match) return location;
+  const city = match[1].split(',').pop()!.trim();
+  return `${city}, ${match[2]}`;
+}
+
 export function errorMessage(err: unknown, fallback: string): string {
   const e = err as { status?: number; error?: { detail?: unknown } } | null;
   if (e?.status === 0) return 'Can’t reach the server. Check your connection and try again.';

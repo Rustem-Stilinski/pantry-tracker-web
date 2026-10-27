@@ -101,6 +101,13 @@ const STORE_HINTS: [RegExp, string][] = [
   [/\bVIC\s+CARD\b/i, 'Harris Teeter'],
 ];
 
+/** US state and DC codes, for telling "FAIRFAX, VA 22030" from any two capital letters. */
+const STATES = new Set(('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM '
+  + 'NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY').split(' '));
+const STREET = /^(\d{1,6}\s+(?:[NSEW]\.?\s+)?[A-Za-z0-9 .'-]*\b(?:ST|STREET|AVE|AVENUE|RD|ROAD|BLVD|DR|DRIVE|HWY|HIGHWAY|PIKE|LN|LANE|WAY|PKWY|PARKWAY|CT|COURT|PL|PLACE|CIR|CIRCLE|SQ|TPKE|TURNPIKE|PLAZA|PLZ|CTR|CENTER)\b\.?)/i;
+/** "FAIRFAX, VA 22030", "Arlington VA 22207", or a street then "Arlington vA" without the ZIP. */
+const CITY_STATE = /([A-Za-z][A-Za-z .'-]{1,30}?),?\s+([A-Za-z]{2})\.?(?:\s+(\d{5})(?:-\d{4})?)?\s*$/;
+
 /** Keyword → category, checked in order; the first match wins. */
 const CATEGORY_RULES: [RegExp, string][] = [
   [/\b(?:DEPOSIT|BAG\s*(?:FEE|CHARGE)|PAPER\s+BAG|CRV)\b/i, 'Other'],
@@ -374,6 +381,7 @@ function toDraft(reading: Reading, all: Reading[], options: ParseOptions): Recei
   };
   return {
     storeName: first((r) => findStore(r.header, r.lines, knownStores)),
+    storeLocation: first((r) => findLocation(r.header)),
     purchaseDate: first((r) => findDate(r.lines, today)),
     purchaseTime: first((r) => findTime(r.lines)),
     currency: 'USD',
@@ -871,6 +879,26 @@ function findStore(header: string[], lines: string[], knownStores: string[]): st
     && upperShare(line) >= 0.6
     && !/\b(?:WELCOME|STORE\s*#|STORE\s+\d|MANAGER|OPEN|HOURS)\b/i.test(line));
   return candidate ? titleCase(candidate.replace(/[^A-Za-z0-9&' ]/g, ' ').replace(/\s+/g, ' ').trim()) : null;
+}
+
+/**
+ * The branch's address from the header: "11620 MONUMENT DRIVE" over "FAIRFAX, VA 22030" becomes
+ * "11620 Monument Drive, Fairfax, VA 22030". A city and state alone count too; nothing else does.
+ */
+export function findLocation(header: string[]): string | null {
+  for (let i = 0; i < header.length; i++) {
+    const line = header[i].replace(/\s*\(?\d{3}\)?[-. ]?\d{3}[-. ]\d{4}.*$/, ''); // a phone number after it
+    const streetHere = STREET.exec(line);
+    const rest = streetHere ? line.slice(streetHere[0].length).replace(/^[,\s]+/, '') : line;
+    const place = CITY_STATE.exec(rest);
+    if (!place || place.index > 0 || !STATES.has(place[2].toUpperCase())) continue;
+    // Without a ZIP, only a city right after a street address counts ("1101 S Joyce St  Arlington vA").
+    if (!place[3] && !streetHere) continue;
+    const street = streetHere?.[1] ?? STREET.exec(header[i - 1] ?? '')?.[1] ?? null;
+    const where = `${titleCase(place[1].trim())}, ${place[2].toUpperCase()}${place[3] ? ` ${place[3]}` : ''}`;
+    return street ? `${titleCase(street.replace(/\s+/g, ' ').trim())}, ${where}` : where;
+  }
+  return null;
 }
 
 /** Store names print in capitals; mixed-case header text is usually a slogan or a misread logo. */

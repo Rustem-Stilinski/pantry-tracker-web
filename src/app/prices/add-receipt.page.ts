@@ -149,6 +149,11 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
                   @for (s of knownStores(); track s) { <option [value]="s"></option> }
                 </datalist>
               </div>
+              <div class="field r-location">
+                <label for="r-location">Location <span class="opt">optional</span></label>
+                <input id="r-location" type="text" maxlength="160" autocomplete="off"
+                       placeholder="e.g. 11620 Monument Dr, Fairfax, VA" [value]="location()" (input)="location.set(val($event))">
+              </div>
               <div class="field">
                 <label for="r-date">Date</label>
                 <input id="r-date" type="date" [max]="today" [value]="date()" (input)="date.set(val($event))">
@@ -234,6 +239,8 @@ export class AddReceiptPage {
   protected readonly saving = signal(false);
 
   protected readonly store = signal('');
+  /** The store's branch, as printed under its name. */
+  protected readonly location = signal('');
   protected readonly date = signal(this.today);
   protected readonly time = signal('');
   protected readonly rows = signal<Row[]>([]);
@@ -370,6 +377,7 @@ export class AddReceiptPage {
   protected startOver(): void {
     this.message.set('');
     this.store.set('');
+    this.location.set('');
     this.date.set(this.today);
     this.time.set('');
     this.rows.set([]);
@@ -383,6 +391,7 @@ export class AddReceiptPage {
 
   private fill(draft: ReceiptDraft): void {
     this.store.set(draft.storeName ?? '');
+    this.location.set(draft.storeLocation ?? '');
     this.date.set(draft.purchaseDate && draft.purchaseDate <= this.today ? draft.purchaseDate : this.today);
     this.time.set(draft.purchaseTime ?? '');
     this.subtotal.set(draft.subtotal != null ? Number(draft.subtotal).toFixed(2) : '');
@@ -486,6 +495,7 @@ export class AddReceiptPage {
     };
     return {
       storeName: store,
+      storeLocation: this.location().trim() || null,
       purchasedAt: when.toISOString(),
       subtotal: optional(this.subtotal()),
       tax: optional(this.tax()),

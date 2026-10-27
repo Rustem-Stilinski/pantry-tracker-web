@@ -1,5 +1,5 @@
 import {
-  amount, errorMessage, groupByDay, itemKey, monthKey, relativeDay, shiftMonth, tallyGroups, unitLabel,
+  amount, errorMessage, groupByDay, itemKey, monthKey, placeName, relativeDay, shiftMonth, tallyGroups, unitLabel,
 } from './format';
 
 describe('format helpers', () => {
@@ -55,5 +55,13 @@ describe('format helpers', () => {
       .toBe('quantity must be greater than or equal to 0.01');
     expect(errorMessage({ status: 500, error: null }, 'Something went wrong.')).toBe('Something went wrong.');
     expect(errorMessage({ status: 0 }, 'x')).toContain('Can’t reach the server');
+  });
+
+  it('shortens a store location to the city and state', () => {
+    expect(placeName('11620 Monument Drive, Fairfax, VA 22030')).toBe('Fairfax, VA');
+    expect(placeName('4500 Lee Hwy, Arlington, VA 22207')).toBe('Arlington, VA');
+    expect(placeName('Fairfax, VA')).toBe('Fairfax, VA');
+    expect(placeName('Pentagon City')).toBe('Pentagon City');
+    expect(placeName(null)).toBe('');
   });
 });
