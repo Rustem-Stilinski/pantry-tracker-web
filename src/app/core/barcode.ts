@@ -12,11 +12,20 @@ export function typedBarcode(text: string): string | null {
   return /^(\d{8}|\d{12,14})$/.test(digits) ? digits : null;
 }
 
-/** Spaced the way it's printed: "0036000291452" -> "0 036000 291452", "96385074" -> "9638 5074". */
+/**
+ * Spaced the way it's printed on the package. A 13-digit code starting with 0 is a 12-digit UPC:
+ * "0036000291452" -> "0 36000 29145 2". Other EAN-13: "4006381333931" -> "4 006381 333931"; EAN-8: "9638 5074".
+ */
 export function displayBarcode(code: string): string {
+  if (/^0\d{12}$/.test(code)) return `${code[1]} ${code.slice(2, 7)} ${code.slice(7, 12)} ${code[12]}`;
   if (/^\d{13}$/.test(code)) return `${code[0]} ${code.slice(1, 7)} ${code.slice(7)}`;
   if (/^\d{8}$/.test(code)) return `${code.slice(0, 4)} ${code.slice(4)}`;
   return code;
+}
+
+/** "UPC" for US and Canadian products (13 digits starting with 0), else "EAN". */
+export function barcodeLabel(code: string): string {
+  return /^0\d{12}$/.test(code) ? 'UPC' : 'EAN';
 }
 
 /**

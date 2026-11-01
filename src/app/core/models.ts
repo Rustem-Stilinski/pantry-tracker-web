@@ -261,6 +261,12 @@ export interface BarcodeLookup {
   prices: ItemPrice | null;
 }
 
+/** A UPC linked to an item. */
+export interface ItemBarcode {
+  code: string;
+  itemName: string;
+}
+
 export interface YearSpending {
   year: number;
   total: number;

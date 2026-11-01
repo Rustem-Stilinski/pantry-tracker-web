@@ -3,7 +3,8 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  BarcodeLookup, Entry, FrequentItem, Household, HouseholdSummary, ItemHistory, ItemTotal, NewEntry, PricesOverview,
+  BarcodeLookup, Entry, FrequentItem, Household, HouseholdSummary, ItemBarcode, ItemHistory, ItemTotal, NewEntry,
+  PricesOverview,
   ReaderStatus, ReceiptAlias, ReceiptDetail, ReceiptDraft, ReceiptSummary, SaveReceipt, StoreComparison, User,
   YearSpending,
 } from './models';
@@ -144,6 +145,21 @@ export class Api {
   /** Names (or renames) a barcode for everyone in the log. */
   saveBarcode(householdId: string, code: string, itemName: string): Observable<BarcodeLookup> {
     return this.http.put<BarcodeLookup>(`/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`, { itemName });
+  }
+
+  /** The UPCs linked to an item (matched by name, like prices). */
+  itemBarcodes(householdId: string, item: string): Observable<ItemBarcode[]> {
+    return this.http.get<ItemBarcode[]>(`/api/households/${householdId}/barcodes`, { params: new HttpParams().set('item', item) });
+  }
+
+  /** Unlinks a UPC from its item. */
+  unlinkBarcode(householdId: string, code: string): Observable<void> {
+    return this.http.delete<void>(`/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`);
+  }
+
+  /** Corrects a saved receipt's date and time. */
+  changeReceiptDate(householdId: string, receiptId: string, purchasedAt: string): Observable<ReceiptDetail> {
+    return this.http.patch<ReceiptDetail>(`/api/households/${householdId}/receipts/${receiptId}`, { purchasedAt });
   }
 
   /** URL of the Server-Sent Events stream for live updates. */

@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
-import { closestItems, displayBarcode, typedBarcode } from '../core/barcode';
+import { barcodeLabel, closestItems, displayBarcode, typedBarcode } from '../core/barcode';
 import { errorMessage, itemKey, relativeDay } from '../core/format';
 import { BarcodeLookup } from '../core/models';
 import { unitPrice } from '../core/money';
@@ -15,6 +15,8 @@ import { BarcodeScanner } from './barcode-scanner.component';
 /**
  * Scan a product's barcode: /scan opens the camera; /scan?code=… shows what it is. A barcode the log has
  * named shows its prices and a one-tap "Log a use"; a new one is named once, ideally after its receipt name.
+ * From an item's price page, /scan?for=<item> links the scanned UPC straight to that item (asking first if
+ * it's already linked to another).
  */
 @Component({
   selector: 'app-scan-page',
@@ -26,8 +28,12 @@ import { BarcodeScanner } from './barcode-scanner.component';
 
       @if (!code()) {
         <section class="slip scan-slip" aria-labelledby="scan-title">
-          <div class="slip-head"><h2 id="scan-title">Scan a barcode</h2></div>
+          <div class="slip-head"><h2 id="scan-title">{{ linkTo() ? 'Scan its UPC' : 'Scan a barcode' }}</h2></div>
           <div class="slip-body">
+            @if (linkTo()) {
+              <p class="hint">The UPC you scan is linked to <strong>{{ linkTo() }}</strong>, so scanning it shows these prices.
+                <a class="link-btn" routerLink="/prices/item" [queryParams]="{ item: linkTo() }">Back</a></p>
+            }
             <app-barcode-scanner (detected)="open($event)" />
             <form class="typed-code" (submit)="lookUpTyped($event)" novalidate>
               <label for="typed-code">Or type the number under the bars</label>
@@ -46,7 +52,7 @@ import { BarcodeScanner } from './barcode-scanner.component';
         <section class="slip scan-result" aria-labelledby="result-title" aria-live="polite">
           <div class="slip-head">
             <h2 id="result-title">{{ heading() }}</h2>
-            <span class="label-caps barcode-digits">{{ shownCode() }}</span>
+            <span class="label-caps barcode-digits">{{ codeLabel() }} {{ shownCode() }}</span>
           </div>
           <div class="slip-body">
             @if (loadError()) {
@@ -56,8 +62,24 @@ import { BarcodeScanner } from './barcode-scanner.component';
               </div>
             } @else if (!lookup()) {
               <p class="loading">Looking it up…</p>
+            } @else if (conflict()) {
+              @let l = lookup()!;
+              <p class="hint">This UPC is already linked to</p>
+              <p class="scan-name">{{ l.itemName }}</p>
+              <div class="scan-actions">
+                <button type="button" class="primary btn-small" (click)="moveHere()" [disabled]="saving()">
+                  Link it to {{ linkTo() }} instead
+                </button>
+                <button type="button" class="secondary btn-small" (click)="conflict.set(false)">Keep it</button>
+              </div>
+              @if (saveError()) {
+                <p class="form-msg" role="alert">{{ saveError() }}</p>
+              }
             } @else if (lookup()!.known && !renaming()) {
               @let l = lookup()!;
+              @if (linkedNote()) {
+                <p class="notice scan-linked" role="status">{{ linkedNote() }}</p>
+              }
               <p class="scan-name">{{ l.itemName }}</p>
               @if (l.prices; as p) {
                 <dl class="stat-row">
@@ -86,6 +108,9 @@ import { BarcodeScanner } from './barcode-scanner.component';
                 <button type="button" class="secondary btn-small" (click)="scanAnother()">Scan another</button>
               </div>
               <button type="button" class="link-btn scan-rename" (click)="rename()">Wrong item? Rename this barcode</button>
+              @if (linkTo()) {
+                <a class="link-btn" routerLink="/prices/item" [queryParams]="{ item: linkTo() }">‹ Back to {{ linkTo() }}</a>
+              }
             } @else {
               @let l = lookup()!;
               @if (!l.known) {
@@ -142,6 +167,8 @@ export class ScanPage {
   /** From the query string: /scan?code=036000291452&format=upc_a */
   readonly code = input<string>();
   readonly format = input<string>();
+  /** From ?for=<item>: link the scanned UPC to this item. */
+  readonly linkTo = input<string | undefined>(undefined, { alias: 'for' });
 
   private readonly api = inject(Api);
   private readonly router = inject(Router);
@@ -156,14 +183,20 @@ export class ScanPage {
   protected readonly saving = signal(false);
   protected readonly saveError = signal('');
   protected readonly knownNames = signal<string[]>([]);
+  /** The UPC is linked to another item than the one it's being scanned for. */
+  protected readonly conflict = signal(false);
+  protected readonly linkedNote = signal('');
 
   protected readonly heading = computed(() => {
     const l = this.lookup();
     if (!l) return 'Scanned';
+    if (this.conflict()) return 'Already linked';
+    if (this.linkedNote()) return 'UPC linked';
     if (this.renaming()) return 'Rename';
     return l.known ? 'Scanned' : 'New barcode';
   });
   protected readonly shownCode = computed(() => displayBarcode(this.lookup()?.code ?? this.code() ?? ''));
+  protected readonly codeLabel = computed(() => (this.lookup() ? barcodeLabel(this.lookup()!.code) : ''));
   /** Receipt items that look like the suggested product, so the barcode can be linked to their prices. */
   protected readonly matches = computed(() => {
     const suggestion = this.lookup()?.suggestion?.name;
@@ -177,12 +210,13 @@ export class ScanPage {
     effect(() => {
       const code = this.code();
       const format = this.format();
-      untracked(() => void this.load(code, format));
+      const linkTo = this.linkTo();
+      untracked(() => void this.load(code, format, linkTo));
     });
   }
 
   protected open(found: FoundBarcode): void {
-    void this.router.navigate(['/scan'], { queryParams: { code: found.code, format: found.format } });
+    void this.router.navigate(['/scan'], { queryParams: { code: found.code, format: found.format, for: this.linkTo() || null } });
   }
 
   protected lookUpTyped(event: Event): void {
@@ -193,11 +227,29 @@ export class ScanPage {
       return;
     }
     this.typedError.set('');
-    void this.router.navigate(['/scan'], { queryParams: { code } });
+    void this.router.navigate(['/scan'], { queryParams: { code, for: this.linkTo() || null } });
   }
 
   protected scanAnother(): void {
     void this.router.navigate(['/scan']);
+  }
+
+  /** Moves a UPC that was linked to another item to the one it's being scanned for. */
+  protected async moveHere(): Promise<void> {
+    const lookup = this.lookup();
+    const target = this.linkTo()?.trim();
+    if (!lookup || !target) return;
+    this.saving.set(true);
+    this.saveError.set('');
+    try {
+      this.lookup.set(await firstValueFrom(this.api.saveBarcode(this.householdId(), lookup.code, target)));
+      this.conflict.set(false);
+      this.linkedNote.set(`Moved here from ${lookup.itemName}.`);
+    } catch (err) {
+      this.saveError.set(errorMessage(err, 'Couldn’t link it. Try again.'));
+    } finally {
+      this.saving.set(false);
+    }
   }
 
   protected rename(): void {
@@ -237,17 +289,34 @@ export class ScanPage {
     return relativeDay(new Date(iso));
   }
 
-  private async load(code: string | undefined, format: string | undefined): Promise<void> {
+  private async load(code: string | undefined, format: string | undefined, linkTo: string | undefined): Promise<void> {
     const seq = ++this.requestSeq;
     this.lookup.set(null);
     this.loadError.set('');
     this.renaming.set(false);
     this.saveError.set('');
+    this.conflict.set(false);
+    this.linkedNote.set('');
     this.typed.set('');
     if (!code) return;
     try {
       const found = await firstValueFrom(this.api.barcode(this.householdId(), code, format));
       if (seq !== this.requestSeq) return;
+      const target = linkTo?.trim();
+      if (target) {
+        if (!found.known) {
+          // Scanned from the item's page: link it there, no naming step.
+          const saved = await firstValueFrom(this.api.saveBarcode(this.householdId(), found.code, target));
+          if (seq !== this.requestSeq) return;
+          this.lookup.set(saved);
+          this.linkedNote.set(`Linked to ${target}. Scanning it now shows these prices.`);
+          return;
+        }
+        this.lookup.set(found);
+        if (itemKey(found.itemName ?? '') === itemKey(target)) this.linkedNote.set('Already linked to this item.');
+        else this.conflict.set(true);
+        return;
+      }
       this.lookup.set(found);
       if (!found.known) {
         this.name.set(found.suggestion?.name ?? '');

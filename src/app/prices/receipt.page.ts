@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
-import { amount, errorMessage } from '../core/format';
+import { amount, dayKey, errorMessage, monthLabel, toLocalInputValue } from '../core/format';
 import { ReceiptDetail } from '../core/models';
 import { money, percent, unitPrice } from '../core/money';
 import { Toasts } from '../core/toast.service';
@@ -26,7 +26,30 @@ import { householdId } from './household-id';
         <h2 class="page-title">{{ r.storeName }}</h2>
         @if (r.storeLocation) { <p class="store-location">{{ r.storeLocation }}</p> }
         <span class="label-caps">{{ dateFmt.format(date(r.purchasedAt)) }} · {{ r.items.length }} items · {{ money(r.total) }}</span>
+        @if (!fixing()) {
+          <button type="button" class="link-btn date-fix-open" (click)="startFix(r)">Wrong date? Change it</button>
+        }
       </div>
+
+      @if (fixing()) {
+        <form class="date-fix" (submit)="saveDate($event, r)" novalidate>
+          <div class="field">
+            <label for="fix-date">Date on the receipt</label>
+            <input id="fix-date" type="date" [max]="today" [value]="fixDate()" (input)="fixDate.set($any($event.target).value)">
+          </div>
+          <div class="field">
+            <label for="fix-time">Time <span class="opt">optional</span></label>
+            <input id="fix-time" type="time" [value]="fixTime()" (input)="fixTime.set($any($event.target).value)">
+          </div>
+          <div class="date-fix-actions">
+            <button class="primary btn-small" type="submit" [disabled]="savingDate()">Save date</button>
+            <button type="button" class="link-btn" (click)="fixing.set(false)">Cancel</button>
+          </div>
+          @if (dateError()) {
+            <p class="form-msg" role="alert">{{ dateError() }}</p>
+          }
+        </form>
+      }
 
       @if (r.priceChanges.length) {
         <section class="block callout" aria-labelledby="receipt-changes">
@@ -91,6 +114,12 @@ export class ReceiptPage {
   protected readonly receipt = signal<ReceiptDetail | null>(null);
   protected readonly error = signal('');
   protected readonly confirming = signal(false);
+  protected readonly fixing = signal(false);
+  protected readonly fixDate = signal('');
+  protected readonly fixTime = signal('');
+  protected readonly savingDate = signal(false);
+  protected readonly dateError = signal('');
+  protected readonly today = dayKey(new Date());
   protected readonly dateFmt = new Intl.DateTimeFormat(undefined, {
     weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
   });
@@ -112,6 +141,46 @@ export class ReceiptPage {
 
   protected date(iso: string): Date {
     return new Date(iso);
+  }
+
+  protected startFix(r: ReceiptDetail): void {
+    const [date, time] = toLocalInputValue(new Date(r.purchasedAt)).split('T');
+    this.fixDate.set(date);
+    this.fixTime.set(time);
+    this.dateError.set('');
+    this.fixing.set(true);
+  }
+
+  /** Saves a corrected date; the receipt moves to that month in the list, and its prices move with it. */
+  protected async saveDate(event: Event, r: ReceiptDetail): Promise<void> {
+    event.preventDefault();
+    const date = this.fixDate();
+    if (!date) {
+      this.dateError.set('Pick the date printed on the receipt.');
+      return;
+    }
+    if (date > this.today) {
+      this.dateError.set('That date hasn’t happened yet. Pick the date printed on the receipt.');
+      return;
+    }
+    const when = new Date(`${date}T${this.fixTime() || '12:00'}`);
+    if (Number.isNaN(when.getTime())) {
+      this.dateError.set('Check the date and time.');
+      return;
+    }
+    this.savingDate.set(true);
+    this.dateError.set('');
+    try {
+      const updated = await firstValueFrom(this.api.changeReceiptDate(this.householdId(), r.id, when.toISOString()));
+      this.receipt.set(updated);
+      this.fixing.set(false);
+      const month = date.slice(0, 7);
+      this.toasts.show(`Date changed. It’s now under ${monthLabel(month)} in Receipts.`);
+    } catch (err) {
+      this.dateError.set(errorMessage(err, 'Couldn’t change the date. Try again.'));
+    } finally {
+      this.savingDate.set(false);
+    }
   }
 
   protected async remove(r: ReceiptDetail): Promise<void> {

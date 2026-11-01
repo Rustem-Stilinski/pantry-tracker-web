@@ -191,6 +191,19 @@ JASMINE RICE 20LB        21.99:F\nTOTAL 33.97`, { today: TODAY });
   it('ignores dates in the future', () => {
     expect(parseReceiptText('SHOP\n12/31/2026\nMILK 3.98', { today: TODAY }).purchaseDate).toBeNull();
   });
+
+  it('reads a misread month as the latest of October to December that isn’t in the future', () => {
+    const nov3 = new Date(2026, 10, 3);
+    // "11/01/26" with the second 1 read as 7 or 4: November, not October.
+    expect(parseReceiptText('SHOP\n17/01/26 OP# 305536\nMILK 3.98', { today: nov3 }).purchaseDate).toBe('2026-11-01');
+    expect(parseReceiptText('SHOP\n14/01/26\nMILK 3.98', { today: nov3 }).purchaseDate).toBe('2026-11-01');
+    // In October an "18" is still October (December and November would be in the future).
+    expect(parseReceiptText('SHOP\n18/18/26\nMILK 3.98', { today: TODAY }).purchaseDate).toBe('2026-10-18');
+    // A December receipt read in January stays in December.
+    expect(parseReceiptText('SHOP\n19/20/26\nMILK 3.98', { today: new Date(2027, 0, 5) }).purchaseDate).toBe('2026-12-20');
+    // Before October, a month like 17 can't be right this year.
+    expect(parseReceiptText('SHOP\n17/01/26\nMILK 3.98', { today: new Date(2026, 5, 1) }).purchaseDate).toBeNull();
+  });
 });
 
 /**
