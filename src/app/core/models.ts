@@ -97,6 +97,8 @@ export interface ReceiptDraft {
 
 export interface DraftItem {
   receiptText: string | null;
+  /** The product code printed for the line, digits only (Safeway: the UPC without its end digits). */
+  itemCode?: string | null;
   name: string;
   quantity: number;
   unit: string;
@@ -117,6 +119,7 @@ export interface SaveReceipt {
   items: {
     name: string;
     receiptText: string | null;
+    itemCode?: string | null;
     quantity: number;
     unit: string;
     unitPrice: number;
@@ -138,6 +141,7 @@ export interface ReceiptLine {
   id: string;
   name: string;
   receiptText: string | null;
+  itemCode?: string | null;
   quantity: number;
   unit: string;
   unitPrice: number;
@@ -259,12 +263,15 @@ export interface BarcodeLookup {
   suggestion: BarcodeSuggestion | null;
   /** The item's receipt prices, when it's been on a receipt. */
   prices: ItemPrice | null;
+  /** The code on a receipt line that just linked this barcode ("2113050504"), else null. */
+  receiptCode?: string | null;
 }
 
-/** A UPC linked to an item. */
+/** A code linked to an item: a scanned barcode, or the code printed on its receipt lines. */
 export interface ItemBarcode {
   code: string;
   itemName: string;
+  source?: 'scan' | 'receipt';
 }
 
 export interface YearSpending {

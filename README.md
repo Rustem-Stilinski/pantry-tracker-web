@@ -143,6 +143,12 @@ under the bars.
   ignored while it's still in front of the camera, a UPC already on another item asks first, and **Skip**
   and **Done** end the run.
 
+- **Codes printed on receipts.** Some stores print each line's item code; Safeway prints the UPC without
+  its two small end digits (`2113050504` for `0 21130 50504 3`). The receipt reader keeps it (a 10–13 digit
+  number on the item's line, or alone on the line under it), the review screen shows it, and it's saved
+  with the line. Scanning that product later finds the line and links it on its own ("Found on your
+  receipt as 21130 50504"), with no naming step. Until then the item page shows the code as "On receipt".
+
 How prices link: receipts print names, not UPCs, so prices are filed by item name (ignoring case and
 spacing), and a UPC points at a name. Linking from the item's own page is the surest way to match.
 

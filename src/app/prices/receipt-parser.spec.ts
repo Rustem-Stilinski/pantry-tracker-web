@@ -188,6 +188,27 @@ JASMINE RICE 20LB        21.99:F\nTOTAL 33.97`, { today: TODAY });
     expect(draft.notes).toContain('No items were found');
   });
 
+  it('keeps the product code a receipt prints on the line', () => {
+    // Safeway: the UPC without its end digits, before the name.
+    const before = parseReceiptText('SAFEWAY\n2113050504 SIG JASMINE RICE 2LB  3.49 S\nBANANAS  1.18 S\nTOTAL 4.67', { today: TODAY });
+    expect(before.items.map((i) => [i.receiptText, i.itemCode])).toEqual([
+      ['SIG JASMINE RICE 2LB', '2113050504'], ['BANANAS', null],
+    ]);
+    // After the name, and a full 12-digit UPC.
+    const after = parseReceiptText('SHOP\nSIG JASMINE RICE 021130505043 3.49\nTOTAL 3.49', { today: TODAY });
+    expect(after.items[0]).toMatchObject({ receiptText: 'SIG JASMINE RICE', itemCode: '021130505043' });
+  });
+
+  it('takes a code on its own line as the item above’s', () => {
+    const draft = parseReceiptText('SHOP\nSIG JASMINE RICE  3.49\n2113050504\nBANANAS  1.18\nTOTAL 4.67', { today: TODAY });
+    expect(draft.items.map((i) => i.itemCode)).toEqual(['2113050504', null]);
+  });
+
+  it('doesn’t take a store number, phone or short number as a product code', () => {
+    const draft = parseReceiptText('SHOP #1234\n(703) 653-1600\nMILK 1 GAL 30536 3.98\nTOTAL 3.98', { today: TODAY });
+    expect(draft.items[0].itemCode).toBeNull();
+  });
+
   it('ignores dates in the future', () => {
     expect(parseReceiptText('SHOP\n12/31/2026\nMILK 3.98', { today: TODAY }).purchaseDate).toBeNull();
   });

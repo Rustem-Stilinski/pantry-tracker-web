@@ -29,6 +29,8 @@ export interface Row {
   id: number;
   name: string;
   receiptText: string | null;
+  /** The product code printed for the line; saved so scanning the product links it. */
+  itemCode: string | null;
   qty: string;
   unit: string;
   unitPrice: string;
@@ -171,6 +173,9 @@ export function editRow(row: Row, field: keyof Row, value: string): Row {
                     <input type="text" maxlength="80" [attr.aria-label]="'Line ' + (i + 1) + ' item'" placeholder="Item"
                            [value]="row.name" (input)="edit(row.id, 'name', val($event))">
                     @if (row.receiptText) { <small>On receipt: <code>{{ row.receiptText }}</code></small> }
+                    @if (row.itemCode) {
+                      <small class="rr-code">Item code <code>{{ row.itemCode }}</code>: scanning this product will link it</small>
+                    }
                   </div>
                   <label class="rr-field"><span>Qty</span>
                     <input type="text" inputmode="decimal" [value]="row.qty" (input)="edit(row.id, 'qty', val($event))">
@@ -402,6 +407,7 @@ export class AddReceiptPage {
       id: this.nextId++,
       name: item.name ?? '',
       receiptText: item.receiptText || null,
+      itemCode: item.itemCode || null,
       qty: String(item.quantity ?? 1),
       unit: item.unit || 'pcs',
       unitPrice: String(item.unitPrice ?? ''),
@@ -436,7 +442,7 @@ export class AddReceiptPage {
   }
 
   private blankRow(): Row {
-    return { id: this.nextId++, name: '', receiptText: null, qty: '1', unit: 'pcs', unitPrice: '', lineTotal: '', category: 'Other', suggestion: null };
+    return { id: this.nextId++, name: '', receiptText: null, itemCode: null, qty: '1', unit: 'pcs', unitPrice: '', lineTotal: '', category: 'Other', suggestion: null };
   }
 
   // ---------- save ----------
@@ -482,6 +488,7 @@ export class AddReceiptPage {
       items.push({
         name: r.name.trim(),
         receiptText: r.receiptText,
+        itemCode: r.itemCode,
         quantity: qty,
         unit: r.unit,
         unitPrice: price >= 0 ? price : round2(lineTotal / qty),

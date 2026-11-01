@@ -116,6 +116,19 @@ describe('an item’s UPCs and a receipt’s date', () => {
     expect(el.querySelectorAll('.upc-chip').length).toBe(2);
   });
 
+  it('shows a code printed on the item’s receipt, which can’t be removed', async () => {
+    barcodes = [{ code: '2113050504', itemName: 'Fairlife 2% milk', source: 'receipt' }];
+    const fixture = TestBed.createComponent(ItemPage);
+    fixture.componentRef.setInput('item', 'Fairlife 2% milk');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const chip = el.querySelector('.upc-chip.from-receipt');
+    expect(chip?.querySelector('.label-caps')?.textContent).toBe('On receipt');
+    expect(chip?.querySelector('code')?.textContent).toBe('21130 50504');
+    expect(chip?.querySelector('button')).toBeNull();
+  });
+
   it('offers to scan a UPC when the item has none', async () => {
     barcodes = [];
     const fixture = TestBed.createComponent(ItemPage);

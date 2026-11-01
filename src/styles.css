@@ -1086,3 +1086,8 @@ a.upc-item:hover { background: var(--surface); }
 .upc-codes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; }
 .upc-codes code { font-family: var(--font-mono); font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
 
+/* codes printed on receipts */
+.rr-code { color: var(--down); }
+.upc-chip.from-receipt { border-style: dashed; padding-right: 10px; }
+.code-src { font-family: var(--font-body); font-size: var(--t-xs); }
+

@@ -316,11 +316,12 @@ export class ScanPage {
           return;
         }
         this.lookup.set(found);
-        if (itemKey(found.itemName ?? '') === itemKey(target)) this.linkedNote.set('Already linked to this item.');
-        else this.conflict.set(true);
+        if (itemKey(found.itemName ?? '') !== itemKey(target)) this.conflict.set(true);
+        else this.linkedNote.set(found.receiptCode ? receiptNote(found.receiptCode) : 'Already linked to this item.');
         return;
       }
       this.lookup.set(found);
+      if (found.receiptCode) this.linkedNote.set(receiptNote(found.receiptCode));
       if (!found.known) {
         this.name.set(found.suggestion?.name ?? '');
         void this.loadKnownNames();
@@ -348,4 +349,9 @@ export class ScanPage {
     if (prices.status === 'rejected' && frequent.status === 'rejected') this.namesLoaded = false;
     this.knownNames.set([...names.values()].sort((a, b) => a.localeCompare(b)));
   }
+}
+
+/** "Found on your receipt as 21130 50504, so it's linked now." */
+function receiptNote(code: string): string {
+  return `Found on your receipt as ${displayBarcode(code)}, so it’s linked now.`;
 }
