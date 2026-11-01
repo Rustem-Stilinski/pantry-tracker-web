@@ -152,6 +152,11 @@ export class Api {
     return this.http.get<ItemBarcode[]>(`/api/households/${householdId}/barcodes`, { params: new HttpParams().set('item', item) });
   }
 
+  /** Every UPC linked in the log, by item. */
+  allBarcodes(householdId: string): Observable<ItemBarcode[]> {
+    return this.http.get<ItemBarcode[]>(`/api/households/${householdId}/barcodes`);
+  }
+
   /** Unlinks a UPC from its item. */
   unlinkBarcode(householdId: string, code: string): Observable<void> {
     return this.http.delete<void>(`/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`);

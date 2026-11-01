@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -43,12 +43,17 @@ type Mode = 'sign-in' | 'register';
           </div>
           <button class="primary" type="submit" [disabled]="busy()">{{ mode() === 'register' ? 'Create account' : 'Sign in' }}</button>
           @if (message()) { <p class="form-msg" role="alert">{{ message() }}</p> }
+          @if (expired() && !message()) {
+            <p class="notice" role="status">You were signed out. Sign in again; your log and receipts are all still here.</p>
+          }
         </div>
       </form>
     </div>
   `,
 })
 export class SignInPage {
+  /** ?expired=1 when a sign-in ended while the app was open. */
+  readonly expired = input<string>();
   private readonly session = inject(Session);
   private readonly router = inject(Router);
 

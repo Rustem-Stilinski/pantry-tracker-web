@@ -35,6 +35,9 @@ import { BarcodeScanner } from './barcode-scanner.component';
                 <a class="link-btn" routerLink="/prices/item" [queryParams]="{ item: linkTo() }">Back</a></p>
             }
             <app-barcode-scanner (detected)="open($event)" />
+            @if (!linkTo()) {
+              <a class="link-btn" routerLink="/prices/upcs">Link UPCs to your receipt items, one after another ›</a>
+            }
             <form class="typed-code" (submit)="lookUpTyped($event)" novalidate>
               <label for="typed-code">Or type the number under the bars</label>
               <div class="typed-row">

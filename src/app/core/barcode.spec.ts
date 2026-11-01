@@ -1,5 +1,5 @@
 import { pickBarcode } from '../scan/barcode-reader';
-import { ReadConfirmer, barcodeLabel, closestItems, displayBarcode, typedBarcode } from './barcode';
+import { ReadConfirmer, barcodeLabel, closestItems, displayBarcode, sameBarcode, typedBarcode } from './barcode';
 
 describe('typed barcodes', () => {
   it('keeps the digits of a product barcode, however it was spaced', () => {
@@ -13,6 +13,12 @@ describe('typed barcodes', () => {
     expect(typedBarcode('0360002914')).toBeNull();
     expect(typedBarcode('03600029145x')).toBeNull();
     expect(typedBarcode('')).toBeNull();
+  });
+
+  it('knows a UPC-A and its EAN-13 are the same code', () => {
+    expect(sameBarcode('036000291452', '0036000291452')).toBe(true);
+    expect(sameBarcode('0036000291452', '036000291452')).toBe(true);
+    expect(sameBarcode('036000291452', '4006381333931')).toBe(false);
   });
 
   it('spaces codes the way they are printed, UPCs as 12 digits', () => {

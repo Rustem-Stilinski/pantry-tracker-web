@@ -593,7 +593,7 @@ a.primary, .primary.btn-small {
 
 /* each Prices page stacks its sections with the same rhythm as the log page */
 app-items-page, app-item-page, app-compare-page, app-receipts-page, app-receipt-page,
-app-add-receipt-page, app-spending-page { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+app-add-receipt-page, app-spending-page, app-upcs-page { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
 /* rise / drop badges */
 .delta {
@@ -1066,3 +1066,23 @@ app-scan-page { display: block; }
   .date-fix { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .date-fix-actions { grid-column: 1 / -1; }
 }
+
+/* Link UPCs */
+.link-slip { position: relative; }
+.link-target { display: flex; flex-direction: column; gap: 2px; }
+.link-target .muted { color: var(--muted); font-size: var(--t-sm); }
+.link-conflict p { margin: 0 0 10px; }
+.upc-list { display: flex; flex-direction: column; border-top: 1px solid var(--ink); }
+.upc-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; min-width: 0;
+}
+a.upc-item:hover { background: var(--surface); }
+.upc-item.current { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.upc-item .p-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.upc-item .p-item strong { overflow-wrap: anywhere; }
+.upc-item .p-item small { color: var(--muted); font-size: var(--t-sm); }
+.upc-item .secondary.btn-small { flex: none; }
+.upc-codes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 8px; }
+.upc-codes code { font-family: var(--font-mono); font-size: var(--t-sm); color: var(--muted); white-space: nowrap; }
+

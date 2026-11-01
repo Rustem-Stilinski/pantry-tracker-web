@@ -137,6 +137,12 @@ under the bars.
   to unlink it (with Undo). **Scan its UPC** there links the next scan straight to that item, with no
   naming step, so the name always matches its receipts; a UPC already on another item asks first.
 
+- **Link UPCs** (Prices › UPCs) lists receipt items without a UPC, newest first (items sold by weight and
+  fees are left out). Tap **Scan** on one and scan the product: it's linked, and the next item is ready with
+  the camera still on, so a whole trip can be linked while putting groceries away. The code just linked is
+  ignored while it's still in front of the camera, a UPC already on another item asks first, and **Skip**
+  and **Done** end the run.
+
 How prices link: receipts print names, not UPCs, so prices are filed by item name (ignoring case and
 spacing), and a UPC points at a name. Linking from the item's own page is the surest way to match.
 
@@ -145,6 +151,12 @@ Elsewhere, including iPhone and iPad Safari, the app loads [`barcode-detector`](
 the same API built on ZXing as WebAssembly. Its ~1 MB `.wasm` file is served by this app under `/barcode`
 (see `angular.json` assets and `nginx.conf.template`), loaded only when someone scans, and cached.
 The camera needs HTTPS (or `localhost`), which Render provides.
+
+## Signed out
+
+If the API answers 401 while the app thinks someone is signed in (the sign-in ended), the app goes to the
+sign-in page with a note that nothing was lost, instead of showing empty lists
+(`core/signed-out.interceptor.ts`). Sign-ins are kept in the API's database, so restarts don't end them.
 
 ## How it talks to the API
 

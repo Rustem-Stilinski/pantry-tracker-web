@@ -75,6 +75,12 @@ export class Session {
     }
   }
 
+  /** The server no longer knows this sign-in: forget it here too, so the sign-in page opens. */
+  expire(): void {
+    this.clear();
+    this.loading = Promise.resolve();
+  }
+
   private clear(): void {
     this.user.set(null);
     this.households.set([]);
