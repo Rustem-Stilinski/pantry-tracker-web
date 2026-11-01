@@ -1,5 +1,5 @@
 import { pickBarcode } from '../scan/barcode-reader';
-import { ReadConfirmer, barcodeLabel, closestItems, displayBarcode, sameBarcode, typedBarcode } from './barcode';
+import { ReadConfirmer, barcodeLabel, closestItems, displayBarcode, sameBarcode, typedBarcode, typedBarcodeProblem } from './barcode';
 
 describe('typed barcodes', () => {
   it('keeps the digits of a product barcode, however it was spaced', () => {
@@ -13,6 +13,25 @@ describe('typed barcodes', () => {
     expect(typedBarcode('0360002914')).toBeNull();
     expect(typedBarcode('03600029145x')).toBeNull();
     expect(typedBarcode('')).toBeNull();
+  });
+
+  it('takes dots and dashes as spacing', () => {
+    expect(typedBarcode('0.36000.29145.2')).toBe('036000291452');
+    expect(typedBarcode('0–36000–29145–2')).toBe('036000291452');
+  });
+
+  it('says what to fix when a typed number can’t be a barcode', () => {
+    // The usual slip: only the big digits, without the small ones at each end.
+    expect(typedBarcodeProblem('36000 29145')).toBe(
+      'That’s 10 digits. A UPC has 12: include the small digits printed outside the bars at each end, like 0 36000 29145 2.');
+    expect(typedBarcodeProblem('0 36000 29145')).toContain('That’s 11 digits. A UPC has 12');
+    expect(typedBarcodeProblem('4011')).toContain('That’s 4 digits.');
+    expect(typedBarcodeProblem('4011')).toContain('stickers on fruit');
+    expect(typedBarcodeProblem('')).toBe('Type the numbers printed under the bars.');
+    expect(typedBarcodeProblem('fairlife')).toBe('Use only the numbers printed under the bars.');
+    expect(typedBarcodeProblem('0 36000 29145 2 0 36000 29145 2')).toContain('more than a barcode has');
+    // Never guesses a missing digit.
+    expect(typedBarcode('36000 29145 2')).toBeNull();
   });
 
   it('knows a UPC-A and its EAN-13 are the same code', () => {
