@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 
@@ -93,6 +93,9 @@ import { LogStore } from './log.store';
   `,
 })
 export class LogForm {
+  /** An item to fill in, e.g. from a scanned barcode's "Log a use". */
+  readonly preset = input<string | null | undefined>(null);
+
   protected readonly store = inject(LogStore);
   protected readonly categories = CATEGORIES;
   protected readonly unitGroups = UNIT_GROUPS;
@@ -101,6 +104,9 @@ export class LogForm {
   protected readonly message = signal('');
   protected readonly maxWhen = signal(toLocalInputValue(new Date()));
   private readonly itemInput = viewChild.required<ElementRef<HTMLInputElement>>('itemInput');
+  private appliedPreset = '';
+  /** Item key of a preset whose usual unit and category haven't arrived yet. */
+  private pendingPresetKey = '';
 
   protected readonly form = new FormGroup({
     itemName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -118,6 +124,29 @@ export class LogForm {
     this.form.controls.itemName.valueChanges.pipe(takeUntilDestroyed()).subscribe((name) => {
       const known = this.store.knownItems().get(itemKey(name ?? ''));
       if (known) this.form.patchValue({ ...unitFields(known.unit), category: known.category }, { emitEvent: false });
+    });
+    // A preset fills in the item; its usual unit and category follow once the log's items have loaded.
+    effect(() => {
+      const preset = this.preset()?.trim() ?? '';
+      if (!preset || preset === this.appliedPreset) return;
+      untracked(() => {
+        this.appliedPreset = preset;
+        this.pendingPresetKey = itemKey(preset);
+        this.form.controls.itemName.setValue(preset);
+      });
+    });
+    effect(() => {
+      const known = this.store.knownItems();
+      untracked(() => {
+        const key = this.pendingPresetKey;
+        const item = key ? known.get(key) : undefined;
+        if (!item) return;
+        this.pendingPresetKey = '';
+        const c = this.form.controls;
+        if (itemKey(c.itemName.value) === key && c.unit.pristine && c.customUnit.pristine && c.category.pristine) {
+          this.form.patchValue({ ...unitFields(item.unit), category: item.category }, { emitEvent: false });
+        }
+      });
     });
     this.form.controls.when.valueChanges.pipe(takeUntilDestroyed()).subscribe((when) => {
       if (when === 'earlier') {

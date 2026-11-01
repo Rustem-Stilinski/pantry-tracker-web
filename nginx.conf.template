@@ -31,6 +31,14 @@ server {
         try_files $uri =404;
     }
 
+    # Barcode reader for browsers without a built-in one (iPhone Safari): ~1 MB of WebAssembly.
+    location /barcode/ {
+        types { application/wasm wasm; }
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
     # Hashed build files can be cached for a long time.
     location ~* \.(?:js|css|woff2?|ico|png|svg)$ {
         expires 30d;

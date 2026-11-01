@@ -23,6 +23,12 @@ export const routes: Routes = [
     loadComponent: () => import('./log/log.page').then((m) => m.LogPage),
   },
   {
+    path: 'scan',
+    title: 'Scan · Pantry Tracker',
+    canActivate: [signedInOnly, hasHousehold],
+    loadComponent: () => import('./scan/scan.page').then((m) => m.ScanPage),
+  },
+  {
     path: 'prices',
     canActivate: [signedInOnly, hasHousehold],
     loadComponent: () => import('./prices/prices.shell').then((m) => m.PricesShell),

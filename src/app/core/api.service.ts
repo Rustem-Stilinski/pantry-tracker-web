@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Entry, FrequentItem, Household, HouseholdSummary, ItemHistory, ItemTotal, NewEntry, PricesOverview,
+  BarcodeLookup, Entry, FrequentItem, Household, HouseholdSummary, ItemHistory, ItemTotal, NewEntry, PricesOverview,
   ReaderStatus, ReceiptAlias, ReceiptDetail, ReceiptDraft, ReceiptSummary, SaveReceipt, StoreComparison, User,
   YearSpending,
 } from './models';
@@ -130,6 +130,20 @@ export class Api {
 
   stores(householdId: string): Observable<string[]> {
     return this.http.get<string[]>(`/api/households/${householdId}/stores`);
+  }
+
+  // ---- barcodes
+
+  /** What a scanned barcode is: the log's item with its prices, or a suggested name for a new one. */
+  barcode(householdId: string, code: string, format?: string): Observable<BarcodeLookup> {
+    let params = new HttpParams();
+    if (format) params = params.set('format', format);
+    return this.http.get<BarcodeLookup>(`/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`, { params });
+  }
+
+  /** Names (or renames) a barcode for everyone in the log. */
+  saveBarcode(householdId: string, code: string, itemName: string): Observable<BarcodeLookup> {
+    return this.http.put<BarcodeLookup>(`/api/households/${householdId}/barcodes/${encodeURIComponent(code)}`, { itemName });
   }
 
   /** URL of the Server-Sent Events stream for live updates. */

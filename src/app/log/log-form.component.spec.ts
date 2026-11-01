@@ -79,3 +79,47 @@ describe('LogForm unit dropdown', () => {
     expect((el.querySelector('#custom-unit') as HTMLInputElement).value).toBe('jar');
   });
 });
+
+describe('LogForm filled in from a scan', () => {
+  const known = signal(new Map<string, KnownItem>());
+
+  beforeEach(async () => {
+    known.set(new Map());
+    await TestBed.configureTestingModule({
+      imports: [LogForm],
+      providers: [{
+        provide: LogStore,
+        useValue: { knownItems: known, saving: signal(false), add: async () => true },
+      }],
+    }).compileComponents();
+  });
+
+  it('fills in the item, then its usual unit and category once the log has loaded', async () => {
+    const fixture = TestBed.createComponent(LogForm);
+    fixture.componentRef.setInput('preset', 'Honey');
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect((el.querySelector('#item') as HTMLInputElement).value).toBe('Honey');
+    expect((el.querySelector('#unit') as HTMLSelectElement).value).toBe('pcs');
+
+    known.set(new Map([['honey', { itemName: 'Honey', unit: 'jar', category: 'Pantry' }]]));
+    await fixture.whenStable();
+    expect((el.querySelector('#unit') as HTMLSelectElement).value).toBe('__other__');
+    expect((el.querySelector('#custom-unit') as HTMLInputElement).value).toBe('jar');
+    expect((el.querySelector('#cat-Pantry') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('leaves a unit the person already picked alone', async () => {
+    const fixture = TestBed.createComponent(LogForm);
+    fixture.componentRef.setInput('preset', 'Honey');
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const unit = el.querySelector('#unit') as HTMLSelectElement;
+    unit.value = 'bottle';
+    unit.dispatchEvent(new Event('change'));
+
+    known.set(new Map([['honey', { itemName: 'Honey', unit: 'jar', category: 'Pantry' }]]));
+    await fixture.whenStable();
+    expect(unit.value).toBe('bottle');
+  });
+});
