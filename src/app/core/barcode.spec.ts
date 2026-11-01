@@ -1,5 +1,5 @@
 import { pickBarcode } from '../scan/barcode-reader';
-import { ReadConfirmer, closestItems, displayBarcode, typedBarcode } from './barcode';
+import { ReadConfirmer, barcodeLabel, closestItems, displayBarcode, typedBarcode } from './barcode';
 
 describe('typed barcodes', () => {
   it('keeps the digits of a product barcode, however it was spaced', () => {
@@ -15,8 +15,11 @@ describe('typed barcodes', () => {
     expect(typedBarcode('')).toBeNull();
   });
 
-  it('spaces codes the way they are printed', () => {
-    expect(displayBarcode('0036000291452')).toBe('0 036000 291452');
+  it('spaces codes the way they are printed, UPCs as 12 digits', () => {
+    expect(displayBarcode('0036000291452')).toBe('0 36000 29145 2');
+    expect(barcodeLabel('0036000291452')).toBe('UPC');
+    expect(displayBarcode('4006381333931')).toBe('4 006381 333931');
+    expect(barcodeLabel('4006381333931')).toBe('EAN');
     expect(displayBarcode('96385074')).toBe('9638 5074');
     expect(displayBarcode('10012345678902')).toBe('10012345678902');
   });

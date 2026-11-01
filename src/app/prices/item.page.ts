@@ -3,13 +3,15 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
+import { barcodeLabel, displayBarcode } from '../core/barcode';
 import { amount, errorMessage, placeName, relativeDay } from '../core/format';
-import { ItemHistory } from '../core/models';
+import { ItemBarcode, ItemHistory } from '../core/models';
 import { money, percent, unitPrice } from '../core/money';
+import { Toasts } from '../core/toast.service';
 import { householdId } from './household-id';
 import { PriceChart } from './price-chart.component';
 
-/** One item's price history: headline numbers, chart, prices by store, every purchase. */
+/** One item's price history: its UPCs, headline numbers, chart, prices by store, every purchase. */
 @Component({
   selector: 'app-item-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,6 +27,22 @@ import { PriceChart } from './price-chart.component';
       <div class="item-head">
         <h2 class="page-title">{{ h.summary.itemName }}</h2>
         <span class="label-caps">{{ h.summary.category }} · per {{ h.summary.unit === 'pcs' ? 'item' : h.summary.unit }}</span>
+      </div>
+
+      <div class="upc-row">
+        @for (b of barcodes(); track b.code) {
+          <span class="upc-chip">
+            <span class="label-caps">{{ label(b.code) }}</span>
+            <code>{{ show(b.code) }}</code>
+            <button type="button" class="upc-remove" [attr.aria-label]="'Remove ' + label(b.code) + ' ' + show(b.code)"
+                    (click)="unlink(b)">×</button>
+          </span>
+        } @empty {
+          <span class="hint">No UPC linked yet.</span>
+        }
+        <a class="link-btn" routerLink="/scan" [queryParams]="{ for: item() }">
+          {{ barcodes().length ? 'Scan another UPC' : 'Scan its UPC' }}
+        </a>
       </div>
 
       <dl class="stat-row">
@@ -95,8 +113,13 @@ export class ItemPage {
   readonly unit = input<string>();
 
   private readonly api = inject(Api);
+  private readonly toasts = inject(Toasts);
   private readonly householdId = householdId();
   protected readonly history = signal<ItemHistory | null>(null);
+  /** UPCs linked to this item; scanning one shows these prices. */
+  protected readonly barcodes = signal<ItemBarcode[]>([]);
+  protected readonly show = displayBarcode;
+  protected readonly label = barcodeLabel;
   protected readonly error = signal('');
   protected readonly dateFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   protected readonly money = money;
@@ -129,13 +152,39 @@ export class ItemPage {
     return new Date(iso);
   }
 
+  /** Unlinks a UPC, with Undo. */
+  protected async unlink(barcode: ItemBarcode): Promise<void> {
+    const id = this.householdId();
+    try {
+      await firstValueFrom(this.api.unlinkBarcode(id, barcode.code));
+      this.barcodes.update((list) => list.filter((b) => b.code !== barcode.code));
+      this.toasts.show(`Removed ${barcodeLabel(barcode.code)} ${displayBarcode(barcode.code)}`, () => {
+        void firstValueFrom(this.api.saveBarcode(id, barcode.code, barcode.itemName))
+          .then(() => this.loadBarcodes(barcode.itemName))
+          .catch(() => this.toasts.show('Couldn’t put that UPC back. Scan it again to link it.'));
+      });
+    } catch (err) {
+      this.toasts.show(errorMessage(err, 'Couldn’t remove that UPC. Try again.'));
+    }
+  }
+
+  private async loadBarcodes(item: string): Promise<void> {
+    try {
+      this.barcodes.set(await firstValueFrom(this.api.itemBarcodes(this.householdId(), item)));
+    } catch {
+      this.barcodes.set([]); // the prices still show without them
+    }
+  }
+
   private async load(item: string | undefined, unit: string | undefined): Promise<void> {
     this.history.set(null);
+    this.barcodes.set([]);
     this.error.set('');
     if (!item) {
       this.error.set('Pick an item from the list.');
       return;
     }
+    void this.loadBarcodes(item);
     try {
       this.history.set(await firstValueFrom(this.api.priceHistory(this.householdId(), item, unit)));
     } catch (err) {

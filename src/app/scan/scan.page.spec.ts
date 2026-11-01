@@ -47,10 +47,11 @@ describe('ScanPage', () => {
     }).compileComponents();
   });
 
-  async function render(code: string, format?: string) {
+  async function render(code: string, format?: string, linkTo?: string) {
     const fixture = TestBed.createComponent(ScanPage);
     fixture.componentRef.setInput('code', code);
     if (format) fixture.componentRef.setInput('format', format);
+    if (linkTo) fixture.componentRef.setInput('for', linkTo);
     await fixture.whenStable();
     fixture.detectChanges();
     await fixture.whenStable();
@@ -63,7 +64,7 @@ describe('ScanPage', () => {
 
     expect(asked).toEqual([{ code: '036000291452', format: 'upc_a' }]);
     expect(el.querySelector('.scan-name')?.textContent).toContain('Fairlife 2% milk');
-    expect(el.querySelector('.barcode-digits')?.textContent).toContain('0 036000 291452');
+    expect(el.querySelector('.barcode-digits')?.textContent).toContain('UPC 0 36000 29145 2');
     const stats = el.querySelector('.stat-row')?.textContent ?? '';
     expect(stats).toContain('$5.49 each');
     expect(stats).toContain('Wegmans');
@@ -124,5 +125,50 @@ describe('ScanPage', () => {
     const { el } = await render('036000291453');
     expect(el.querySelector('.form-msg')?.textContent).toContain('isn’t a product barcode');
     expect([...el.querySelectorAll('button')].some((b) => b.textContent?.includes('Scan again'))).toBe(true);
+  });
+
+  describe('scanned from an item’s page', () => {
+    it('links a new UPC straight to the item, without a naming step', async () => {
+      lookups['036000291452'] = { code: '0036000291452', known: false, itemName: null, prices: null, suggestion: null };
+      const { el } = await render('036000291452', 'upc_a', 'Fairlife 2% milk');
+      expect(saved).toEqual([{ code: '0036000291452', itemName: 'Fairlife 2% milk' }]);
+      expect(el.querySelector('h2')?.textContent).toContain('UPC linked');
+      expect(el.querySelector('.scan-linked')?.textContent).toContain('Linked to Fairlife 2% milk');
+      expect(el.querySelector('.stat-row')?.textContent).toContain('$5.49 each');
+      expect(el.querySelector('#barcode-name')).toBeNull();
+    });
+
+    it('says so when the UPC is already this item’s', async () => {
+      lookups['0036000291452'] = { code: '0036000291452', known: true, itemName: 'fairlife 2% MILK', suggestion: null, prices: MILK_PRICES };
+      const { el } = await render('0036000291452', undefined, 'Fairlife 2% milk');
+      expect(saved).toEqual([]);
+      expect(el.querySelector('.scan-linked')?.textContent).toContain('Already linked to this item');
+    });
+
+    it('asks before moving a UPC that belongs to another item', async () => {
+      lookups['0036000291452'] = { code: '0036000291452', known: true, itemName: 'Oat milk', suggestion: null, prices: null };
+      const { fixture, el } = await render('0036000291452', undefined, 'Fairlife 2% milk');
+      expect(saved).toEqual([]);
+      expect(el.querySelector('h2')?.textContent).toContain('Already linked');
+      expect(el.querySelector('.scan-name')?.textContent).toContain('Oat milk');
+
+      const move = [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Link it to Fairlife 2% milk instead'));
+      move!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(saved).toEqual([{ code: '0036000291452', itemName: 'Fairlife 2% milk' }]);
+      expect(el.querySelector('.scan-name')?.textContent).toContain('Fairlife 2% milk');
+      expect(el.querySelector('.scan-linked')?.textContent).toContain('Moved here from Oat milk');
+    });
+
+    it('keeps the other item when asked to', async () => {
+      lookups['0036000291452'] = { code: '0036000291452', known: true, itemName: 'Oat milk', suggestion: null, prices: null };
+      const { fixture, el } = await render('0036000291452', undefined, 'Fairlife 2% milk');
+      [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Keep it')!.click();
+      fixture.detectChanges();
+      expect(saved).toEqual([]);
+      expect(el.querySelector('.scan-name')?.textContent).toContain('Oat milk');
+      expect(el.textContent).toContain('No receipt has “Oat milk” on it yet');
+    });
   });
 });

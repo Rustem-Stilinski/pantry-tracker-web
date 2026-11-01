@@ -102,11 +102,15 @@ Deploy Hook). Without the secret the job just skips with a warning.
      that was read two ways and still doesn't add up shows **Also read as $x.xx · Use** on its line.
    - **With Claude.** When the API has `ANTHROPIC_API_KEY`, the server reads the photos with Claude,
      which also expands abbreviations. If that fails, **Read it on this device instead** appears.
+   A date misread with an impossible month (13–19, from a smudged "10", "11" or "12") is taken as the
+   latest of October to December that isn't in the future.
 3. Check the draft: the store, its location (the branch's address, read from under the store's name),
    date, time, and every line's name, quantity, unit, price and category are editable. Changing
    quantity or price recalculates the line total, and a note appears if the lines don't add up to the
    receipt total.
 4. Save. The receipt page then lists any item whose price moved 10% or more since you last bought it.
+   **Wrong date? Change it** on the receipt page corrects a misread date; the receipt moves to that month
+   in Receipts, and its prices move with it.
 
 **Learned names.** On-device reading keeps names as printed ("Gv 2% mlk gal"). Each saved line keeps
 its printed text, and the API returns what each printed line was last saved as
@@ -129,6 +133,12 @@ under the bars.
   Facts, and the page offers receipt items with similar names (`closestItems` in `core/barcode.ts`):
   pick the one it's called on your receipts and the scan shows its prices from then on.
   **Wrong item? Rename this barcode** fixes a mistake.
+- **An item's UPCs** show on its price page (12-digit UPC form, e.g. `0 36000 29145 2`), each with ×
+  to unlink it (with Undo). **Scan its UPC** there links the next scan straight to that item, with no
+  naming step, so the name always matches its receipts; a UPC already on another item asks first.
+
+How prices link: receipts print names, not UPCs, so prices are filed by item name (ignoring case and
+spacing), and a UPC points at a name. Linking from the item's own page is the surest way to match.
 
 How it reads (`scan/barcode-reader.ts`): Chrome on Android has a built-in barcode reader and uses it.
 Elsewhere, including iPhone and iPad Safari, the app loads [`barcode-detector`](https://github.com/Sec-ant/barcode-detector),

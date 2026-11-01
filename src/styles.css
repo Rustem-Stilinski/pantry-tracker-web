@@ -1036,3 +1036,33 @@ app-scan-page { display: block; }
 .suggest .filter { height: auto; min-height: 30px; padding: 4px 10px; text-align: left; }
 .name-form { display: flex; flex-direction: column; gap: 14px; }
 
+/* an item's UPCs */
+.upc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.upc-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 32px; padding: 0 2px 0 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface);
+}
+.upc-chip code { font-family: var(--font-mono); font-size: var(--t-sm); letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+.upc-remove {
+  width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted);
+  font-size: 1.1rem; line-height: 1; cursor: pointer; border-radius: 3px;
+}
+.upc-remove:hover { color: var(--danger); background: var(--danger-soft); }
+.scan-linked { margin: 0; }
+
+/* correcting a receipt's date */
+.date-fix-open { align-self: flex-start; }
+.date-fix {
+  display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 8rem) auto; gap: 12px; align-items: end;
+  padding: 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface);
+}
+.date-fix input[type="date"], .date-fix input[type="time"] {
+  width: 100%; height: 42px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--field);
+}
+.date-fix-actions { display: flex; align-items: center; gap: 14px; }
+.date-fix .form-msg { grid-column: 1 / -1; }
+@media (max-width: 520px) {
+  .date-fix { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .date-fix-actions { grid-column: 1 / -1; }
+}

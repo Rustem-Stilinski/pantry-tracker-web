@@ -929,10 +929,17 @@ function findDate(lines: string[], today: Date): string | null {
       [month, day, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
       if (year < 100) year += 2000;
     }
-    // A zero read as 6, 8 or 9 turns October into "16", "18" or "19".
-    if (month >= 13 && month <= 19) month = 10;
-    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 2000) continue;
-    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (day < 1 || day > 31 || year < 2000) continue;
+    const keyOf = (m: number) => `${year}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    // A misread second digit ("11" read as "17", "10" as "18") makes the month 13–19. It's really
+    // October, November or December: take the latest of those that isn't after today.
+    if (month >= 13 && month <= 19) {
+      const likely = [12, 11, 10].map(keyOf).find((key) => key <= todayKey);
+      if (likely) return likely;
+      continue;
+    }
+    if (month < 1 || month > 12) continue;
+    const key = keyOf(month);
     if (key <= todayKey) return key;
   }
   return null;
