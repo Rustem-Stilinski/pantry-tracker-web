@@ -1,0 +1,91 @@
+/** Barcode helpers with no Angular or browser APIs, so they are easy to unit test. */
+
+/** Product barcodes the scanner looks for: groceries and household goods. */
+export const PRODUCT_FORMATS = ['ean_13', 'upc_a', 'ean_8', 'upc_e'] as const;
+
+/**
+ * What someone typed from under the bars: "0 36000 29145 2" -> "036000291452".
+ * Null when it can't be a product barcode (8, 12, 13 or 14 digits). The server checks the check digit.
+ */
+export function typedBarcode(text: string): string | null {
+  const digits = String(text ?? '').replace(/[\s-]/g, '');
+  return /^(\d{8}|\d{12,14})$/.test(digits) ? digits : null;
+}
+
+/** Spaced the way it's printed: "0036000291452" -> "0 036000 291452", "96385074" -> "9638 5074". */
+export function displayBarcode(code: string): string {
+  if (/^\d{13}$/.test(code)) return `${code[0]} ${code.slice(1, 7)} ${code.slice(7)}`;
+  if (/^\d{8}$/.test(code)) return `${code.slice(0, 4)} ${code.slice(4)}`;
+  return code;
+}
+
+/**
+ * A run of identical reads before a code counts, so one blurry frame can't open the wrong item.
+ * Feed it every read; it answers the code once it has been seen `needed` times in a row within `windowMs`.
+ */
+export class ReadConfirmer {
+  private last = '';
+  private count = 0;
+  private at = 0;
+
+  constructor(private readonly needed = 2, private readonly windowMs = 1500) {}
+
+  /** Returns the code when it's confirmed, else null. */
+  read(code: string, now = Date.now()): string | null {
+    if (code === this.last && now - this.at <= this.windowMs) {
+      this.count++;
+    } else {
+      this.last = code;
+      this.count = 1;
+    }
+    this.at = now;
+    return this.count >= this.needed ? code : null;
+  }
+
+  reset(): void {
+    this.last = '';
+    this.count = 0;
+    this.at = 0;
+  }
+}
+
+/** Words that say nothing about which product it is. */
+const NOISE = new Set([
+  'the', 'and', 'with', 'of', 'for', 'in', 'a', 'an', 'oz', 'fl', 'lb', 'lbs', 'ct', 'count', 'pk', 'pack',
+  'ml', 'g', 'kg', 'l', 'gal', 'each', 'ea', 'size', 'value', 'family', 'original',
+]);
+
+function words(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9%]+/)
+      .filter((w) => w.length >= 2 && !NOISE.has(w) && !/^\d+$/.test(w)),
+  );
+}
+
+/**
+ * The household's item names that share the most words with a product name, best first.
+ * "Fairlife 2% Reduced Fat Milk, 52 fl oz" finds "2% milk" and "Fairlife 2% milk" from receipts.
+ */
+export function closestItems(productName: string, names: readonly string[], limit = 3): string[] {
+  const wanted = words(productName);
+  if (!wanted.size) return [];
+  const seen = new Set<string>();
+  return names
+    .filter((name) => {
+      const key = name.trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((name) => {
+      let score = 0;
+      for (const w of words(name)) if (wanted.has(w)) score++;
+      return { name, score };
+    })
+    .filter((m) => m.score > 0)
+    .sort((a, b) => b.score - a.score || a.name.length - b.name.length)
+    .slice(0, limit)
+    .map((m) => m.name);
+}

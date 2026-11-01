@@ -4,7 +4,8 @@
 
 Web app for **Pantry Tracker**: a shared log of things that get used up (paper towels, coffee pods,
 printer paper) and of what they cost. **Used items** logs what runs out; **Prices** reads receipt
-photos and shows price history, price changes, the cheapest store for each item, and monthly spending.
+photos and shows price history, price changes, the cheapest store for each item, and monthly spending;
+**Scan** reads a product's barcode with the phone camera to show what it cost or to log that it ran out.
 Several people share one log by joining it with an invite code.
 
 The REST API lives in [pantry-tracker-api](https://github.com/Rustem-Stilinski/pantry-tracker-api).
@@ -17,6 +18,7 @@ src/app/
 ├── log/      Used items: log form, quick repeats, totals, entries by day
 ├── prices/   Prices: add a receipt (photo → check → save), items and price changes, item history chart,
 │             compare stores, receipts by month, spending by month
+├── scan/     Scan: camera barcode reader, what a scanned product is, naming a new barcode
 ├── pages/    sign-in and start/join a log
 └── shared/   site header, tally-mark component
 ```
@@ -112,6 +114,27 @@ its printed text, and the API returns what each printed line was last saved as
 Close misreads still match.
 
 **Enter it by hand** opens the same form empty.
+
+## Scanning a barcode
+
+**Scan** (in the header) opens the back camera. Point it at a product's barcode (EAN-13, UPC-A, EAN-8 or
+UPC-E); a code counts once two frames in a row agree, so a blurry frame can't open the wrong item. No
+camera, or camera access refused? **Use a photo of the barcode instead**, or type the number printed
+under the bars.
+
+- **A barcode the log has named** opens its item: the latest and lowest price from receipts (with
+  stores), a link to the full price history, and **Log a use**, which opens Used items with the item,
+  its usual unit and category filled in.
+- **A new barcode** is named once for everyone in the log. The API suggests a name from Open Food
+  Facts, and the page offers receipt items with similar names (`closestItems` in `core/barcode.ts`):
+  pick the one it's called on your receipts and the scan shows its prices from then on.
+  **Wrong item? Rename this barcode** fixes a mistake.
+
+How it reads (`scan/barcode-reader.ts`): Chrome on Android has a built-in barcode reader and uses it.
+Elsewhere, including iPhone and iPad Safari, the app loads [`barcode-detector`](https://github.com/Sec-ant/barcode-detector),
+the same API built on ZXing as WebAssembly. Its ~1 MB `.wasm` file is served by this app under `/barcode`
+(see `angular.json` assets and `nginx.conf.template`), loaded only when someone scans, and cached.
+The camera needs HTTPS (or `localhost`), which Render provides.
 
 ## How it talks to the API
 

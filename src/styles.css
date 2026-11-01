@@ -956,3 +956,83 @@ a.price-row:hover .p-item strong { color: var(--accent); }
 .hb-name { overflow-wrap: anywhere; }
 .hb-track { height: 10px; background: var(--line); border-radius: 0 4px 4px 0; }
 .hb { display: block; height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; }
+
+/* =====================================================================
+   Scan a barcode
+   ===================================================================== */
+.section-nav a.scan-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); }
+.section-nav a.scan-link:hover { color: var(--ink); }
+.section-nav a.scan-link.active { color: var(--paper); }
+.section-nav a.scan-link svg { flex: none; }
+@media (max-width: 400px) {
+  .section-nav { gap: 2px; }
+  .section-nav a { padding-inline: 8px; }
+}
+
+app-scan-page { display: block; }
+.scanner { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.viewfinder {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #0c1012;
+  color: #e3e8e4;
+}
+.viewfinder video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The box to aim at: wide and short like a product barcode, with the rest dimmed. */
+.aim {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: min(78%, 420px);
+  aspect-ratio: 2.2 / 1;
+  transform: translate(-50%, -50%);
+  border: 2px solid #fff;
+  border-radius: 6px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 38%);
+}
+.aim::after {
+  content: '';
+  position: absolute; left: 6%; right: 6%; top: 50%;
+  height: 2px;
+  background: #ff5a4e;
+  box-shadow: 0 0 8px #ff5a4e;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .aim::after { animation: aim-sweep 1.6s ease-in-out infinite alternate; }
+  @keyframes aim-sweep { from { top: 18%; } to { top: 82%; } }
+}
+.vf-hint {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  margin: 0; padding: 4px 12px; border-radius: 999px;
+  background: rgb(0 0 0 / 60%); color: #fff; font-size: var(--t-sm); white-space: nowrap;
+}
+.vf-msg {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  margin: 0; padding: 20px; text-align: center; font-size: var(--t-base);
+}
+.vf-msg .secondary { color: #b6c2ff; border-color: #b6c2ff; }
+.vf-msg .spinner { border-color: rgb(255 255 255 / 25%); border-top-color: #fff; }
+.secondary.btn-small { height: 38px; padding: 0 16px; font-size: var(--t-base); }
+.photo-pick { align-self: flex-start; position: relative; cursor: pointer; }
+.photo-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.photo-pick:focus-within .link-btn { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.typed-code { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; border-top: 1px dashed var(--line-strong); }
+.typed-code label { font-size: var(--t-sm); font-weight: 600; }
+.typed-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.typed-row input { font-family: var(--font-mono); letter-spacing: .04em; }
+.typed-row .secondary { height: 42px; padding: 0 16px; }
+
+.barcode-digits { white-space: nowrap; }
+.scan-name { margin: 0; font-size: var(--t-lg); font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.scan-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.scan-actions > * { flex: 1 1 140px; }
+.scan-rename { align-self: flex-start; }
+.scan-result .stat-row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.suggest { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.suggest .filter { height: auto; min-height: 30px; padding: 4px 10px; text-align: left; }
+.name-form { display: flex; flex-direction: column; gap: 14px; }
+

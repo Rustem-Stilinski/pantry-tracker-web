@@ -239,6 +239,28 @@ export interface MonthSpending {
   byCategory: Amount[];
 }
 
+// ---------- barcodes ----------
+
+/** A name for a new barcode from a public product database. */
+export interface BarcodeSuggestion {
+  name: string;
+  brand: string | null;
+  size: string | null;
+  source: string;
+}
+
+/** What a scanned barcode is for this log. */
+export interface BarcodeLookup {
+  /** Canonical form (13 digits for most products); use it when saving. */
+  code: string;
+  known: boolean;
+  itemName: string | null;
+  /** Only for a barcode the log hasn't named, when the product database has it. */
+  suggestion: BarcodeSuggestion | null;
+  /** The item's receipt prices, when it's been on a receipt. */
+  prices: ItemPrice | null;
+}
+
 export interface YearSpending {
   year: number;
   total: number;

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 
 import { Session } from '../core/session.service';
 import { Toasts } from '../core/toast.service';
@@ -44,7 +44,7 @@ import { TotalsTable } from './totals-table.component';
 
       <main class="grid">
         <div class="side">
-          <app-log-form />
+          <app-log-form [preset]="item()" />
           <app-quick-repeats />
         </div>
 
@@ -65,7 +65,11 @@ import { TotalsTable } from './totals-table.component';
   `,
 })
 export class LogPage {
+  /** From the query string: /?item=Paper towels (a scanned barcode's "Log a use") fills in the form. */
+  readonly item = input<string>();
+
   protected readonly session = inject(Session);
+  private readonly router = inject(Router);
   protected readonly store = inject(LogStore);
   private readonly toasts = inject(Toasts);
   protected readonly copied = signal(false);
@@ -93,6 +97,12 @@ export class LogPage {
     effect(() => {
       const id = this.session.activeHouseholdId();
       if (id) untracked(() => void this.store.open());
+    });
+    // The form keeps the name once it has it; drop ?item= so a reload or the next visit starts clean.
+    effect(() => {
+      if (this.item()) {
+        untracked(() => void this.router.navigate([], { queryParams: { item: null }, queryParamsHandling: 'merge', replaceUrl: true }));
+      }
     });
   }
 
