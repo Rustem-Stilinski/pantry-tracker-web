@@ -8,8 +8,31 @@ export const PRODUCT_FORMATS = ['ean_13', 'upc_a', 'ean_8', 'upc_e'] as const;
  * Null when it can't be a product barcode (8, 12, 13 or 14 digits). The server checks the check digit.
  */
 export function typedBarcode(text: string): string | null {
-  const digits = String(text ?? '').replace(/[\s-]/g, '');
+  const digits = withoutSeparators(text);
   return /^(\d{8}|\d{12,14})$/.test(digits) ? digits : null;
+}
+
+/**
+ * Why a typed number can't be a product barcode, in words that say what to fix. The usual slip is leaving
+ * out the small digits printed outside the bars at each end of a UPC. (No digit is guessed: a guess could
+ * still pass the check and open the wrong product.)
+ */
+export function typedBarcodeProblem(text: string): string {
+  const typed = withoutSeparators(text);
+  const example = 'like 0 36000 29145 2';
+  if (!typed) return 'Type the numbers printed under the bars.';
+  if (/\D/.test(typed)) return 'Use only the numbers printed under the bars.';
+  const n = typed.length;
+  if (n < 8) {
+    return `That’s ${n} ${n === 1 ? 'digit' : 'digits'}. A UPC has 12, including the small digits at each end, ${example}. `
+      + '(The 4- or 5-digit stickers on fruit aren’t barcodes.)';
+  }
+  if (n > 14) return `That’s ${n} digits, more than a barcode has. A UPC has 12, ${example}.`;
+  return `That’s ${n} digits. A UPC has 12: include the small digits printed outside the bars at each end, ${example}.`;
+}
+
+function withoutSeparators(text: string): string {
+  return String(text ?? '').replace(/[\s.\-‐–—]/g, '');
 }
 
 /**

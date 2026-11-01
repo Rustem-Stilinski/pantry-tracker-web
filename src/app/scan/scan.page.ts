@@ -3,7 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { Api } from '../core/api.service';
-import { barcodeLabel, closestItems, displayBarcode, typedBarcode } from '../core/barcode';
+import { barcodeLabel, closestItems, displayBarcode, typedBarcode, typedBarcodeProblem } from '../core/barcode';
 import { errorMessage, itemKey, relativeDay } from '../core/format';
 import { BarcodeLookup } from '../core/models';
 import { unitPrice } from '../core/money';
@@ -41,8 +41,8 @@ import { BarcodeScanner } from './barcode-scanner.component';
             <form class="typed-code" (submit)="lookUpTyped($event)" novalidate>
               <label for="typed-code">Or type the number under the bars</label>
               <div class="typed-row">
-                <input id="typed-code" type="text" inputmode="numeric" autocomplete="off" maxlength="20"
-                       placeholder="e.g. 0 41303 01234 5" [value]="typed()" (input)="typed.set($any($event.target).value)">
+                <input id="typed-code" type="text" inputmode="numeric" autocomplete="off" maxlength="24"
+                       placeholder="All 12 digits, e.g. 0 36000 29145 2" [value]="typed()" (input)="typed.set($any($event.target).value)">
                 <button class="secondary" type="submit">Look up</button>
               </div>
               @if (typedError()) {
@@ -226,7 +226,7 @@ export class ScanPage {
     event.preventDefault();
     const code = typedBarcode(this.typed());
     if (!code) {
-      this.typedError.set('Type all the digits under the bars: 12 or 13 on most products, 8 on small ones.');
+      this.typedError.set(typedBarcodeProblem(this.typed()));
       return;
     }
     this.typedError.set('');
