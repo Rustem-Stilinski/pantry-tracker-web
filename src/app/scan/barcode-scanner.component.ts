@@ -1,8 +1,8 @@
 import {
-  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, inject, output, signal, viewChild,
+  ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, inject, input, output, signal, viewChild,
 } from '@angular/core';
 
-import { ReadConfirmer } from '../core/barcode';
+import { ReadConfirmer, sameBarcode } from '../core/barcode';
 import { Detector, FoundBarcode, barcodeDetector, pickBarcode, readPhoto } from './barcode-reader';
 
 type CameraState = 'starting' | 'scanning' | 'blocked' | 'unavailable' | 'failed';
@@ -13,7 +13,10 @@ const CAMERA: MediaStreamConstraints = {
   video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
 };
 
-/** Live camera view that reads a product barcode, with a photo fallback. Emits once, then stops the camera. */
+/**
+ * Live camera view that reads a product barcode, with a photo fallback. Emits once, then stops the camera;
+ * in continuous mode the camera stays on and resume() looks for the next barcode.
+ */
 @Component({
   selector: 'app-barcode-scanner',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,6 +53,10 @@ const CAMERA: MediaStreamConstraints = {
 })
 export class BarcodeScanner {
   readonly detected = output<FoundBarcode>();
+  /** Keep the camera on after a read; call resume() to read the next one. */
+  readonly continuous = input(false);
+  /** Codes to look past, such as the one just linked that's still in front of the camera. */
+  readonly ignore = input<ReadonlySet<string>>(new Set());
 
   protected readonly state = signal<CameraState>('starting');
   protected readonly problem = signal('');
@@ -59,6 +66,7 @@ export class BarcodeScanner {
   private readonly video = viewChild<ElementRef<HTMLVideoElement>>('video');
   private readonly confirmer = new ReadConfirmer();
   private stream: MediaStream | null = null;
+  private detector: Detector | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private running = false;
   private destroyed = false;
@@ -120,10 +128,25 @@ export class BarcodeScanner {
       this.fail('failed', 'The camera is ready. Tap “Try the camera again” to start it.');
       return;
     }
+    this.detector = reader.value;
     this.confirmer.reset();
     this.state.set('scanning');
     this.running = true;
     this.scanFrames(reader.value, video);
+  }
+
+  /** Continuous mode: look for the next barcode with the camera still on (or start it again if it stopped). */
+  resume(): void {
+    if (this.running) return;
+    const video = this.video()?.nativeElement;
+    if (!this.stream || !this.detector || !video) {
+      void this.start();
+      return;
+    }
+    this.confirmer.reset();
+    this.state.set('scanning');
+    this.running = true;
+    this.scanFrames(this.detector, video);
   }
 
   protected async fromPhoto(event: Event): Promise<void> {
@@ -154,7 +177,8 @@ export class BarcodeScanner {
       if (video.readyState >= 2 && video.videoWidth > 0) {
         try {
           const found = pickBarcode(await detector.detect(video));
-          if (found && this.running && this.confirmer.read(`${found.format}:${found.code}`)) {
+          const ignored = found && [...this.ignore()].some((code) => sameBarcode(code, found.code));
+          if (found && !ignored && this.running && this.confirmer.read(`${found.format}:${found.code}`)) {
             this.finish(found);
             return;
           }
@@ -168,7 +192,12 @@ export class BarcodeScanner {
   }
 
   private finish(found: FoundBarcode): void {
-    this.stop();
+    if (this.continuous()) {
+      this.running = false;
+      clearTimeout(this.timer);
+    } else {
+      this.stop();
+    }
     // A short buzz confirms the read; browsers only allow it after the person has tapped the page.
     if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(40);
     this.detected.emit(found);

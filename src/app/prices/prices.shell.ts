@@ -3,7 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { SiteHeader } from '../shared/site-header.component';
 
-/** Frame for every Prices page: header, the four views, and the Add receipt button. */
+/** Frame for every Prices page: header, the views, and the Add receipt button. */
 @Component({
   selector: 'app-prices-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -19,6 +19,7 @@ import { SiteHeader } from '../shared/site-header.component';
           <a routerLink="/prices/receipts" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
              ariaCurrentWhenActive="page">Receipts</a>
           <a routerLink="/prices/spending" routerLinkActive="active" ariaCurrentWhenActive="page">Spending</a>
+          <a routerLink="/prices/upcs" routerLinkActive="active" ariaCurrentWhenActive="page">UPCs</a>
         </nav>
         <a class="primary btn-small" routerLink="/prices/receipts/new">Add receipt</a>
       </div>

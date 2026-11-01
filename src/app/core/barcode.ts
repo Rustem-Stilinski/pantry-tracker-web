@@ -23,6 +23,12 @@ export function displayBarcode(code: string): string {
   return code;
 }
 
+/** The same product code, however it was read: UPC-A "036000291452" is EAN-13 "0036000291452". */
+export function sameBarcode(a: string, b: string): boolean {
+  const full = (code: string) => (code.length === 12 ? `0${code}` : code);
+  return full(a) === full(b);
+}
+
 /** "UPC" for US and Canadian products (13 digits starting with 0), else "EAN". */
 export function barcodeLabel(code: string): string {
   return /^0\d{12}$/.test(code) ? 'UPC' : 'EAN';

@@ -64,6 +64,11 @@ export const routes: Routes = [
         loadComponent: () => import('./prices/receipt.page').then((m) => m.ReceiptPage),
       },
       {
+        path: 'upcs',
+        title: 'Link UPCs · Pantry Tracker',
+        loadComponent: () => import('./prices/upcs.page').then((m) => m.UpcsPage),
+      },
+      {
         path: 'spending',
         title: 'Spending · Pantry Tracker',
         loadComponent: () => import('./prices/spending.page').then((m) => m.SpendingPage),
