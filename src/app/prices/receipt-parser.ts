@@ -195,6 +195,10 @@ function readLines(text: string): Reading {
   let detailsAbove = 0;
   let detailsBelow = 0;
 
+  let nameOnlyCode: string | null = null;
+  /** The line the latest item (or its quantity line) was read from: a code line right after belongs to it. */
+  let lastItemLine = -2;
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const price = trailingPrice(line);
@@ -271,12 +275,14 @@ function readLines(text: string): Reading {
       if (previous && !previous.detailed && detailsAbove <= detailsBelow && belongsTo(detail, previous)) {
         attach(previous, detail);
         detailsBelow++;
+        lastItemLine = i;
       } else if (nameOnly && detail.lineTotal != null) {
         // Name on one line, details (with the price) on the next.
         const lineTotal = detail.lineTotal ?? round2(detail.quantity * detail.unitPrice);
-        items.push(newItem(nameOnly, lineTotal));
+        items.push(newItem(nameOnly, lineTotal, nameOnlyCode));
         applyDetail(items[items.length - 1], { ...detail, lineTotal });
         nameOnly = null;
+        lastItemLine = i;
       } else {
         pendingDetail = detail;
       }
@@ -314,6 +320,15 @@ function readLines(text: string): Reading {
       continue;
     }
 
+    // A code alone on a line: the item just above's (or the name waiting for its price).
+    const codeOnly = !price ? CODE_LINE.exec(line) : null;
+    if (codeOnly) {
+      const previous = items[items.length - 1];
+      if (previous && previous.code == null && lastItemLine === i - 1) previous.code = codeOnly[1];
+      else if (nameOnly && nameOnlyCode == null) nameOnlyCode = codeOnly[1];
+      continue;
+    }
+
     if (NOT_ITEM.test(line)) {
       nameOnly = null;
       continue;
@@ -323,27 +338,31 @@ function readLines(text: string): Reading {
       let namePart = line.slice(0, price.index);
       const inline = INLINE_QTY.exec(namePart);
       if (inline) namePart = namePart.slice(inline[0].length);
+      const code = itemCode(namePart);
       namePart = stripCodes(namePart);
       if (letters(namePart) >= 2) {
         if (firstItemIndex < 0) firstItemIndex = i;
-        const item = newItem(namePart, price.value);
+        const item = newItem(namePart, price.value, code);
         const detail = pendingDetail
           ?? (inline ? { quantity: Number(inline[1]), unit: 'pcs', unitPrice: Number.NaN, lineTotal: null, hint: inline[2] ?? '' } : null);
         if (detail && attach(item, detail) && detail === pendingDetail) detailsAbove++;
         pendingDetail = null;
         items.push(item);
         nameOnly = null;
+        lastItemLine = i;
       } else if (nameOnly) {
         // Name on one line, price alone on the next.
         if (firstItemIndex < 0) firstItemIndex = i - 1;
-        items.push(newItem(nameOnly, price.value));
+        items.push(newItem(nameOnly, price.value, nameOnlyCode ?? code));
         nameOnly = null;
+        lastItemLine = i;
       }
       continue;
     }
 
     // A line of text without a price may be an item name whose price is on the next line.
     nameOnly = letters(line) >= 3 ? stripCodes(line) : null;
+    nameOnlyCode = nameOnly ? itemCode(line) : null;
   }
 
   // A "tax" bigger than half the total was really the total, read onto the wrong line. When the
@@ -435,6 +454,8 @@ export function categoryFor(name: string): string {
 
 interface Item {
   receiptText: string;
+  /** A product code printed for the line (Safeway prints the UPC without its end digits), else null. */
+  code: string | null;
   quantity: number;
   unit: string;
   unitPrice: number;
@@ -479,8 +500,17 @@ interface Tax {
   afterTotal: boolean;
 }
 
-function newItem(receiptText: string, lineTotal: number): Item {
-  return { receiptText: receiptText.trim(), quantity: 1, unit: 'pcs', unitPrice: lineTotal, lineTotal, detailed: false, alternatives: [], votes: 1 };
+function newItem(receiptText: string, lineTotal: number, code: string | null = null): Item {
+  return { receiptText: receiptText.trim(), code, quantity: 1, unit: 'pcs', unitPrice: lineTotal, lineTotal, detailed: false, alternatives: [], votes: 1 };
+}
+
+/** A product code on an item line: a run of 10 to 13 digits on its own ("2113050504 SIG JASMINE RICE"). */
+const ITEM_CODE = /(?:^|\s)(\d{10,13})(?=\s|$)/;
+/** A line that is only a product code, as some receipts print under each item. */
+const CODE_LINE = /^\s*(\d{10,13})\s*$/;
+
+function itemCode(text: string): string | null {
+  return ITEM_CODE.exec(text)?.[1] ?? null;
 }
 
 /** Does "2 @ 1.29" belong to an item whose line total is 2.58? Allows a few cents of rounding. */
@@ -666,6 +696,7 @@ function absorb(item: Item, other: Item): void {
     });
   }
   for (const option of other.alternatives) addOption(item, { ...option, votes: 1 });
+  item.code ??= other.code;
   // Keep the cleaner reading of the name ("GREEN SDLS GRAPES" over "a OGREEN SOLS GRAPES").
   if (nameSimilarity(item.receiptText, other.receiptText) >= 0.5 && nameQuality(other.receiptText) > nameQuality(item.receiptText)) {
     item.receiptText = other.receiptText;
@@ -788,6 +819,7 @@ function toDraftItem(item: Item, aliases: ReceiptAlias[]): DraftItem {
   const weighed = item.unit !== 'pcs';
   return {
     receiptText: item.receiptText,
+    itemCode: item.code,
     name: alias?.name ?? readableName(item.receiptText),
     quantity: item.quantity,
     unit: weighed || !alias ? item.unit : alias.unit || 'pcs',

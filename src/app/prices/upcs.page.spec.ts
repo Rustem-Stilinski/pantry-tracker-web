@@ -23,6 +23,7 @@ const ITEMS = [
   item('Checkout bag charge', '2026-11-01T17:38:00Z', 'pcs', 'Other'),
   item('Medium salsa', '2026-10-30T12:00:00Z'),
   item('Large eggs', '2026-10-25T12:00:00Z', 'pcs', 'Dairy & eggs'),
+  item('Signature jasmine rice', '2026-10-20T12:00:00Z'),
 ];
 
 describe('Link UPCs', () => {
@@ -32,7 +33,10 @@ describe('Link UPCs', () => {
   let toasts: { message: string; undo?: () => void }[];
 
   beforeEach(async () => {
-    linked = [{ code: '0041303000000', itemName: 'large eggs' }];
+    linked = [
+      { code: '0041303000000', itemName: 'large eggs', source: 'scan' },
+      { code: '2113050504', itemName: 'Signature jasmine rice', source: 'receipt' },
+    ];
     known = { '96385074': 'Oat milk' };
     saved = [];
     toasts = [];
@@ -92,9 +96,10 @@ describe('Link UPCs', () => {
   it('lists items without a UPC, newest first, leaving out weighed items and fees', async () => {
     const { el, names } = await render();
     expect(names('[aria-labelledby="unlinked-title"]')).toEqual(['Fairlife 2% milk', 'Medium salsa', 'Goya black bean soup']);
-    expect(names('[aria-labelledby="linked-title"]')).toEqual(['Large eggs']);
+    expect(names('[aria-labelledby="linked-title"]')).toEqual(['Large eggs', 'Signature jasmine rice']);
     expect(el.querySelector('#unlinked-title')?.textContent).toContain('3 without a UPC');
-    expect(el.querySelector('.upc-codes code')?.textContent).toBe('0 41303 00000 0');
+    const codes = [...el.querySelectorAll('.upc-codes code')].map((c) => c.textContent?.trim());
+    expect(codes).toEqual(['0 41303 00000 0', '21130 50504 on receipt']);
   });
 
   it('links one item after another, the next ready straight away', async () => {
@@ -109,7 +114,7 @@ describe('Link UPCs', () => {
     expect(toasts.at(-1)?.message).toBe('Linked UPC 0 36000 29145 2 to Fairlife 2% milk');
     expect(el.querySelector('.link-target .scan-name')?.textContent).toBe('Medium salsa');
     expect(names('[aria-labelledby="unlinked-title"]')).toEqual(['Medium salsa', 'Goya black bean soup']);
-    expect(names('[aria-labelledby="linked-title"]')).toEqual(['Fairlife 2% milk', 'Large eggs']);
+    expect(names('[aria-labelledby="linked-title"]')).toEqual(['Fairlife 2% milk', 'Large eggs', 'Signature jasmine rice']);
 
     press(el, 'Skip this one');
     await settle();

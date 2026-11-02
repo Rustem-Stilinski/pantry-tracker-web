@@ -38,7 +38,8 @@ type CodesByItem = ReadonlyMap<string, readonly string[]>;
     <div class="item-head">
       <h2 class="page-title">Link UPCs</h2>
       <p class="hint">Scan each product once; after that, scanning it shows its prices. Items sold by weight, like
-        bananas, have no UPC and aren’t listed.</p>
+        bananas, have no UPC and aren’t listed. Items whose receipt printed a code (Safeway does) link themselves
+        the first time they’re scanned.</p>
     </div>
 
     @if (error()) {
@@ -113,7 +114,9 @@ type CodesByItem = ReadonlyMap<string, readonly string[]>;
               <a class="upc-item" routerLink="/prices/item" [queryParams]="{ item: it.itemName, unit: it.unit }">
                 <span class="p-item"><strong>{{ it.itemName }}</strong><small>{{ it.category }}</small></span>
                 <span class="upc-codes">
-                  @for (code of codesOf(it); track code) { <code>{{ show(code) }}</code> }
+                  @for (code of codesOf(it); track code) {
+                    <code>{{ show(code) }}@if (fromReceipt().has(code)) { <span class="code-src"> on receipt</span> }</code>
+                  }
                 </span>
               </a>
             }
@@ -134,6 +137,8 @@ export class UpcsPage {
   /** Receipt items that can have a UPC, one per item, newest purchase first. */
   protected readonly items = signal<ItemPrice[]>([]);
   protected readonly codes = signal<CodesByItem>(new Map());
+  /** Codes printed on receipts (not scanned yet): scanning the product links them by itself. */
+  protected readonly fromReceipt = signal<ReadonlySet<string>>(new Set());
   protected readonly current = signal<ItemPrice | null>(null);
   protected readonly conflict = signal<Conflict | null>(null);
   /** Codes linked here already: still in front of the camera, so look past them. */
@@ -288,6 +293,7 @@ export class UpcsPage {
         codes.set(key, [...(codes.get(key) ?? []), b.code]);
       }
       this.codes.set(codes);
+      this.fromReceipt.set(new Set(barcodes.filter((b) => b.source === 'receipt').map((b) => b.code)));
       this.loaded.set(true);
     } catch (err) {
       this.error.set(errorMessage(err, 'Reload the page to try again.'));

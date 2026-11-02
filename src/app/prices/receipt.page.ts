@@ -78,7 +78,7 @@ import { householdId } from './household-id';
           <div class="line-row">
             <span class="l-name">
               <a routerLink="/prices/item" [queryParams]="{ item: line.name, unit: line.unit }">{{ line.name }}</a>
-              <small>{{ line.category }}@if (line.receiptText) { · <code>{{ line.receiptText }}</code> }</small>
+              <small>{{ line.category }}@if (line.receiptText) { · <code>{{ line.receiptText }}</code> }@if (line.itemCode) { · code <code>{{ line.itemCode }}</code> }</small>
             </span>
             <span class="num">{{ qty(line.quantity, line.unit) }}</span>
             <span class="num">{{ price(line.unitPrice, line.unit) }}</span>

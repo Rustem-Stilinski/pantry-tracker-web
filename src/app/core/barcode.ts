@@ -41,6 +41,9 @@ function withoutSeparators(text: string): string {
  */
 export function displayBarcode(code: string): string {
   if (/^0\d{12}$/.test(code)) return `${code[1]} ${code.slice(2, 7)} ${code.slice(7, 12)} ${code[12]}`;
+  if (/^\d{12}$/.test(code)) return `${code[0]} ${code.slice(1, 6)} ${code.slice(6, 11)} ${code[11]}`;
+  if (/^\d{11}$/.test(code)) return `${code[0]} ${code.slice(1, 6)} ${code.slice(6)}`;
+  if (/^\d{10}$/.test(code)) return `${code.slice(0, 5)} ${code.slice(5)}`; // a UPC's middle, as Safeway prints it
   if (/^\d{13}$/.test(code)) return `${code[0]} ${code.slice(1, 7)} ${code.slice(7)}`;
   if (/^\d{8}$/.test(code)) return `${code.slice(0, 4)} ${code.slice(4)}`;
   return code;

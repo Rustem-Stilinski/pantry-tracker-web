@@ -171,4 +171,16 @@ describe('ScanPage', () => {
       expect(el.textContent).toContain('No receipt has “Oat milk” on it yet');
     });
   });
+
+  it('says when a receipt’s code linked the barcode', async () => {
+    lookups['021130505043'] = {
+      code: '0021130505043', known: true, itemName: 'Fairlife 2% milk', suggestion: null, prices: MILK_PRICES,
+      receiptCode: '2113050504',
+    };
+    const { el } = await render('021130505043', 'upc_a');
+    expect(el.querySelector('h2')?.textContent).toContain('UPC linked');
+    expect(el.querySelector('.scan-linked')?.textContent).toContain('Found on your receipt as 21130 50504');
+    expect(el.querySelector('.barcode-digits')?.textContent).toContain('UPC 0 21130 50504 3');
+  });
 });
+

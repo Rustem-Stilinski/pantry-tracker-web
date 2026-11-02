@@ -31,12 +31,19 @@ import { PriceChart } from './price-chart.component';
 
       <div class="upc-row">
         @for (b of barcodes(); track b.code) {
-          <span class="upc-chip">
-            <span class="label-caps">{{ label(b.code) }}</span>
-            <code>{{ show(b.code) }}</code>
-            <button type="button" class="upc-remove" [attr.aria-label]="'Remove ' + label(b.code) + ' ' + show(b.code)"
-                    (click)="unlink(b)">×</button>
-          </span>
+          @if (b.source === 'receipt') {
+            <span class="upc-chip from-receipt" title="Printed on this item’s receipt; scanning the product links its UPC">
+              <span class="label-caps">On receipt</span>
+              <code>{{ show(b.code) }}</code>
+            </span>
+          } @else {
+            <span class="upc-chip">
+              <span class="label-caps">{{ label(b.code) }}</span>
+              <code>{{ show(b.code) }}</code>
+              <button type="button" class="upc-remove" [attr.aria-label]="'Remove ' + label(b.code) + ' ' + show(b.code)"
+                      (click)="unlink(b)">×</button>
+            </span>
+          }
         } @empty {
           <span class="hint">No UPC linked yet.</span>
         }
